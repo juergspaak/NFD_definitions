@@ -8,7 +8,7 @@ from scipy.optimize import brentq, fsolve
 from warnings import warn
 
 def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
-             force = False, from_R = False):
+             experimental = False, from_R = False):
     """Compute the ND and FD for a differential equation f
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -43,7 +43,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     force: boolean, default False
         If True the parameters given in pars are assumed to be exact and are
         not checked. Should be set to True when used in combination with
-        experimental data
+        experimental data.
     from_R: boolean, default False
         Set to True if function is called via R by reticulate package.
         Converts types of f and equilibria.
@@ -72,7 +72,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         
     Literature:
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
-    DOI:
+    DOI: 10.1101/482703
     """ 
     if from_R:
         if n_spec-int(n_spec) == 0:
@@ -87,7 +87,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     # check input on correctness
     monotone_f = __input_check__(n_spec, f, args, monotone_f)
     
-    if force:
+    if experimental:
         if not ("c" in pars.keys()):
             pars["c"] = np.ones((n_spec, n_spec))
         if not ("r_i" in pars.keys()):
@@ -222,6 +222,12 @@ def preconditioner(f, args, n_spec, pars):
             raise InputError("Found equilibrium is not stable, "
                         + "with species {} absent.".format(i)
                         + " Please provide manually via the `pars` argument")
+            
+        # check whether equilibrium is feasible, i.e. positive
+        if not (np.all(N_pre>0) and np.all(np.isfinite(N_pre))):
+            raise InputError("Found equilibrium is not feasible (i.e. N*>0), "
+                        + "with species {} absent.".format(i)
+                        + " Please provide manually via the `pars` argument")
         
             
         # save equilibrium density and invasion growth rate
@@ -245,16 +251,6 @@ def solve_c(pars, sp = [0,1], monotone_f = True):
     c : float, the conversion factor c_sp[0]^sp[1]
     """
     sp = np.asarray(sp)
-    
-    # first solve special case of NO = 0
-    NO_ij = NO_fun(pars,1,sp)
-    NO_ji = NO_fun(pars,1,sp[::-1])
-    if NO_ij == 0 and NO_ji == 0: # species do not interact at all
-        return np.nan # c can't be computed
-    elif NO_ij == 0:
-        return 0 # 
-    elif NO_ji == 0:
-        return np.inf
     
     def inter_fun(c):
         # equation to be solved
@@ -282,6 +278,8 @@ def solve_c(pars, sp = [0,1], monotone_f = True):
     if direction == 0: # starting guess for c is correct
         return a
     fac = 2**direction
+    if not np.isfinite(direction):
+        raise InputError("function `f` seems to be returning nonfinite values")
     b = a*fac
     # change searching range to find c with changed size of NO
     while np.sign(inter_fun(b)) == direction:

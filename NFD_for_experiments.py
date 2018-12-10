@@ -84,7 +84,7 @@ def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2,
     # compute the ND, FD etc. parameters
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
             "r_i": r_i}    
-    pars = NFD_model(f, pars = pars, force = True)
+    pars = NFD_model(f, pars = pars, experimental = True)
     pars["f"] = f
     
     if visualize: # visualize results if necessary

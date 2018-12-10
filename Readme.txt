@@ -1,6 +1,6 @@
 Pyhton code to compute niche and fitness differences (N and F) as defined by
 The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
-DOI:
+DOI: 10.1101/482703 
 
 To compute NFD for an mathematical model:
 

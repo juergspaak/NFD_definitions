@@ -4,7 +4,12 @@ Example how to compute the ND and FD for a given differential equation setting
 """
 
 import numpy as np
-from numerical_NFD import NFD_model
+
+try:
+    from numerical_NFD import NFD_model
+except ImportError:
+    # in case this code is used in a submodule, import from the submodule
+    from NFD_definitions.numerical_NFD import NFD_model
 
 # create the differential equation system
 n_spec = 2 # number of species in the system

@@ -5,7 +5,8 @@
 # make sure that python is installed on the system used
 # This is not part of the install.packages("reticulate") command!
 library(reticulate)
-setwd("C:/Users/Jurg/Dropbox/Doktorat/Projects/P5_Fitness and niche differences/3_Programs/")
+# set your working directory
+setwd()
 
 # loads the relevant python code
 source_python("numerical_NFD.py")

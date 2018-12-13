@@ -7,8 +7,12 @@ necessarily biologically meaningful.
 """
 
 import numpy as np
-from numerical_NFD import find_NFD
 import matplotlib.pyplot as plt
+try:
+    from numerical_NFD import NFD_model
+except ImportError:
+    # in case this code is used in a submodule, import from the submodule
+    from nfd_definitions.numerical_NFD import NFD_model
 
 # to run without error change this variable to True
 no_error = True
@@ -66,7 +70,7 @@ if not no_error:
     print('\033[31m'+
         "Error created for illustration, set no_error to True\n\n\n")
     # will result in InputError, as fsolve can't find equilibrium density
-    find_NFD(full_example, args= (coef,))
+    NFD_model(full_example, args= (coef,))
        
 # Pass estimates of the equilibrium densities via the pars argument
 # These only have to be estimates, not the actual equilibrium values
@@ -76,7 +80,7 @@ if not no_error:
 N_star_approx = np.array([[0,roots[1]],
                           [2,0]], dtype = float)
 # compute ND etc.
-pars = find_NFD(full_example, pars = {"N_star": N_star_approx.copy()},
+pars = NFD_model(full_example, pars = {"N_star": N_star_approx.copy()},
                 monotone_f = False, args = (coef,))
 
 
@@ -117,10 +121,10 @@ print("To find other solutions we can pass the key 'c' to pars.\n\n\n")
 # compute ND etc.
 c = np.ones((2,2))
 c[0,1] = 0.5
-pars1 = find_NFD(full_example, monotone_f = False,
+pars1 = NFD_model(full_example, monotone_f = False,
                  pars = {"N_star": N_star_approx.copy(),"c":c})
 c[0,1] = 3
-pars2 = find_NFD(full_example, monotone_f = False,
+pars2 = NFD_model(full_example, monotone_f = False,
                  pars = {"N_star": N_star_approx.copy(),"c":c})
 
 if not no_error:
@@ -128,17 +132,17 @@ if not no_error:
         "Error created for illustration, set no_error to True\n\n\n")
     N_star_approx[1,0] = 3
     # will result in InputError, as equilibrium is not stable
-    find_NFD(full_example, monotone_f = False,
+    NFD_model(full_example, monotone_f = False,
              pars = {"N_star": N_star_approx.copy(),"c":c})
 
 N_star_approx[1,0] = 9
 # in this case we have to pass a starting value of c as an estimate aswell
 # furthermore there's only one c
-pars_new_eq = find_NFD(full_example, monotone_f = False,
+pars_new_eq = NFD_model(full_example, monotone_f = False,
                  pars = {"N_star": N_star_approx.copy(),"c":c})
 
 plt.figure()
-x = np.linspace(0,1,100)
+x = np.linspace(1e-5,1-1e-5,100)
 plt.plot(x,x/(1-x), "red", label = "Coex. boundary")
 plt.axis([0,1,-1,2])
 

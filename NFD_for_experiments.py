@@ -4,11 +4,16 @@ Numerically compute ND and FD for experimental data
 """
 
 import numpy as np
-from scipy.interpolate import InterpolatedUnivariateSpline as ius
-#from scipy.interpolate import UnivariateSpline as ius
-from scipy.optimize import brentq
-from numerical_NFD import NFD_model
 import matplotlib.pyplot as plt
+
+from scipy.interpolate import InterpolatedUnivariateSpline as ius
+from scipy.optimize import brentq
+
+try:
+    from numerical_NFD import NFD_model
+except ImportError:
+    # in case this code is used in a submodule, import from the submodule
+    from nfd_definitions.numerical_NFD import NFD_model
 
 def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2,
                      r_i, visualize = True):

@@ -4,12 +4,16 @@ Example how to compute the ND and FD for a given differential equation setting
 """
 
 import numpy as np
-from numerical_NFD import NFD_model
-from NFD_for_experiments import NFD_experiment
+
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
-
-# set random seed for reproduce ability
+try:
+    from numerical_NFD import NFD_model
+    from NFD_for_experiments import NFD_experiment
+except ImportError:
+    # in case this code is used in a submodule, import from the submodule
+    from nfd_definitions.numerical_NFD import NFD_model
+    from nfd_definitions.NFD_for_experiments import NFD_experiment
 
 ###############################################################################
 # First create experimental dataset

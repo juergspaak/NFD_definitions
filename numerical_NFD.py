@@ -8,7 +8,7 @@ from scipy.optimize import brentq, fsolve
 from warnings import warn
 
 def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
-             experimental = False, from_R = False):
+             experimental = False, from_R = False, xtol = 1e-10):
     """Compute the ND and FD for a differential equation f
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -47,6 +47,8 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     from_R: boolean, default False
         Set to True if function is called via R by reticulate package.
         Converts types of f and equilibria.
+    xtol: float, default 1e-10
+        Precision requirement of solving
         
     Returns
     -------
@@ -96,7 +98,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         pars["f"] = lambda N: f(N, *args)
     else:
         # obtain equilibria densities and invasion growth rates    
-        pars = preconditioner(f, args,n_spec, pars)                  
+        pars = preconditioner(f, args,n_spec, pars, xtol)                  
     # list of all species
     l_spec = list(range(n_spec))
     # compute conversion factors
@@ -105,7 +107,8 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         for j in l_spec:
             if i>=j: # c is assumed to be symmetric, c[i,i] = 1
                 continue
-            c[i,j] = solve_c(pars,[i,j], monotone_f[i] and monotone_f[j])
+            c[i,j] = solve_c(pars,[i,j], monotone_f[i] and monotone_f[j],
+                         xtol=xtol)
             c[j,i] = 1/c[i,j]
 
     # compute NO and FD
@@ -155,7 +158,7 @@ def __input_check__(n_spec, f, args, monotone_f):
 class InputError(Exception):
     pass
         
-def preconditioner(f, args, n_spec, pars):
+def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
     """Returns equilibria densities and invasion growth rates for system `f`
     
     Parameters
@@ -203,10 +206,11 @@ def preconditioner(f, args, n_spec, pars):
         ind = np.arange(n_spec) != i
         # solve for equilibrium, use equilibrium dens. of previous run
         N_pre,info,a ,b = fsolve(lambda N: pars["f"](np.insert(N,i,0))[ind],
-                            pars["N_star"][i,ind], full_output = True)
+                            pars["N_star"][i,ind], full_output = True,
+                            xtol = xtol)
         
         # check whether we found equilibrium
-        if np.amax(np.abs(info["fvec"])/N_pre)>1e-10:
+        if np.amax(np.abs(info["fvec"]))>xtol:
             raise InputError("Not able to find resident equilibrium density, "
                         + "with species {} absent.".format(i)
                         + " Please provide manually via the `pars` argument")
@@ -236,7 +240,7 @@ def preconditioner(f, args, n_spec, pars):
         pars["f0"] = pars["f"](np.zeros(n_spec))
     return pars
     
-def solve_c(pars, sp = [0,1], monotone_f = True):
+def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     """find the conversion factor c for species sp
     
     Parameters
@@ -261,8 +265,8 @@ def solve_c(pars, sp = [0,1], monotone_f = True):
     # use a generic numerical solver when `f` is not montone
     # potentially there are multiple solutions
     if not monotone_f: 
-        c = fsolve(inter_fun,pars["c"][sp[0],sp[1]])[0]
-        if np.abs(inter_fun(c))>1e-10:
+        c = fsolve(inter_fun,pars["c"][sp[0],sp[1]],xtol = xtol)[0]
+        if np.abs(inter_fun(c))>xtol:
             raise ValueError("Not able to find c_{}^{}.".format(*sp) +
                 "Please pass a better guess for c_i^j via the `pars` argument")
         return c

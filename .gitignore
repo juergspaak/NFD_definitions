@@ -8,3 +8,6 @@ __pycache__/
 
 # experimental data
 *.csv
+
+# slides for Powerpoint
+PP_slides/

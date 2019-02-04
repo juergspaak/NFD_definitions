@@ -112,86 +112,89 @@ keys = ["Chesson (2003)","Carroll et al. (2011)", "Zhao et al. (2016)",
 
 colors =  {keys[i]: rainbow(np.linspace(0, 1, len(keys)))[i]
                 for i in range(len(keys))}
-###############################################################################
-# plotting the results for ND
-fig = plt.figure(figsize = (10,10))
-
-ND_range = [-0.5,1.5]
-
-rect_facilitation = patches.Rectangle([interspec[0],1],
-            -interspec[0], ND_range[1]-1, fill = False, linestyle = ":")
-rect_norm = patches.Rectangle([0,0],sign,1, fill = False)
-rect_comp = patches.Rectangle([sign*1,0],interspec[-1], ND_range[0]
-                              , fill = False, linestyle = "--")
-ax = plt.gca()
-ax.add_patch(rect_norm)
-ax.add_patch(rect_facilitation)
-ax.add_patch(rect_comp)
-          
-# plot NFD parameters          
-for key in keys:
-    plt.plot(interspec, ND[key], label = key, linewidth = 2, alpha = 1, 
-             color = colors[key])
-
-# add black dots
-plt.plot(0,1, 'o', color = "black", markersize = 10)
-plt.plot(sign*1,0, '^', color = "black", markersize = 10)
 
 
-# layout
-plt.legend(loc = "upper left")
-
-# axis limits
-plt.xlim(min(interspec), max(interspec))
-plt.xticks([0,sign*1])
-plt.ylim(*ND_range)
-plt.yticks([0,1])
-
-# labeling of interaction
-fs = 16
-offset_y = 0.15
-plt.text(interspec[0]/2,ND_range[0]+offset_y,"positive", 
-         ha = "center", fontsize = fs, backgroundcolor = "white")
-plt.text(sign*1/2,ND_range[0]+offset_y,
-         "negative,\nweaker than\nintraspecific", 
-         ha = "center",va = "center", fontsize = fs)
-plt.text((sign*1+interspec[-1])/2-0.09,ND_range[0]+offset_y,
-          "negative,\nstronger than\nintraspecific",
-         ha = "center",va = "center", fontsize = fs)
-
-
-
-# axis labels
-plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = 16)
-plt.ylabel(r'Niche difference $(\mathcal{N})$', fontsize = 16)
-
-fig.savefig("ND in annual plants.pdf")
-
-###############################################################################
-# plotting the results for ND
-fig = plt.figure(figsize = (9,9))
-
-ND_range = [-0.5,1.5]
-          
-# plot NFD parameters          
-for key in keys:
-    plt.plot(interspec, FD[key], label = key, linewidth = 2, alpha = 1, 
-             color = colors[key])
-
-# layout
-plt.legend(loc = "upper left")
-
-# axis limits
-plt.xlim(min(interspec), max(interspec))
-plt.xticks([0,sign*1])
-plt.ylim(-3,3)
-
-
-plt.axhline(y=0, color = "black", linestyle = ":")
-plt.axvline(x=0, color = "black", linestyle = ":")
-
-# axis labels
-plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = 16)
-plt.ylabel(r'Fitness difference $(\mathcal{F})$', fontsize = 16)
-
-fig.savefig("FD in annual plants.pdf")
+if __name__ == "__main__":
+    ###########################################################################
+    # plotting the results for ND
+    fig = plt.figure(figsize = (10,10))
+    
+    ND_range = [-0.5,1.5]
+    
+    rect_facilitation = patches.Rectangle([interspec[0],1],
+                -interspec[0], ND_range[1]-1, fill = False, linestyle = ":")
+    rect_norm = patches.Rectangle([0,0],sign,1, fill = False)
+    rect_comp = patches.Rectangle([sign*1,0],interspec[-1], ND_range[0]
+                                  , fill = False, linestyle = "--")
+    ax = plt.gca()
+    ax.add_patch(rect_norm)
+    ax.add_patch(rect_facilitation)
+    ax.add_patch(rect_comp)
+              
+    # plot NFD parameters          
+    for key in keys:
+        plt.plot(interspec, ND[key], label = key, linewidth = 2, alpha = 1, 
+                 color = colors[key])
+    
+    # add black dots
+    plt.plot(0,1, 'o', color = "black", markersize = 10)
+    plt.plot(sign*1,0, '^', color = "black", markersize = 10)
+    
+    
+    # layout
+    plt.legend(loc = "upper left")
+    
+    # axis limits
+    plt.xlim(min(interspec), max(interspec))
+    plt.xticks([0,sign*1])
+    plt.ylim(*ND_range)
+    plt.yticks([0,1])
+    
+    # labeling of interaction
+    fs = 16
+    offset_y = 0.15
+    plt.text(interspec[0]/2,ND_range[0]+offset_y,"positive", 
+             ha = "center", fontsize = fs, backgroundcolor = "white")
+    plt.text(sign*1/2,ND_range[0]+offset_y,
+             "negative,\nweaker than\nintraspecific", 
+             ha = "center",va = "center", fontsize = fs)
+    plt.text((sign*1+interspec[-1])/2-0.09,ND_range[0]+offset_y,
+              "negative,\nstronger than\nintraspecific",
+             ha = "center",va = "center", fontsize = fs)
+    
+    
+    
+    # axis labels
+    plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = 16)
+    plt.ylabel(r'Niche difference $(\mathcal{N})$', fontsize = 16)
+    
+    fig.savefig("ND in annual plants.pdf")
+    
+    ###########################################################################
+    # plotting the results for ND
+    fig = plt.figure(figsize = (9,9))
+    
+    ND_range = [-0.5,1.5]
+              
+    # plot NFD parameters          
+    for key in keys:
+        plt.plot(interspec, FD[key], label = key, linewidth = 2, alpha = 1, 
+                 color = colors[key])
+    
+    # layout
+    plt.legend(loc = "upper left")
+    
+    # axis limits
+    plt.xlim(min(interspec), max(interspec))
+    plt.xticks([0,sign*1])
+    plt.ylim(-3,3)
+    
+    
+    plt.axhline(y=0, color = "black", linestyle = ":")
+    plt.axvline(x=0, color = "black", linestyle = ":")
+    
+    # axis labels
+    plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = 16)
+    plt.ylabel(r'Fitness difference $(\mathcal{F})$', fontsize = 16)
+    
+    fig.savefig("FD in annual plants.pdf")

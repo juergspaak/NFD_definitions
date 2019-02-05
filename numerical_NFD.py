@@ -95,7 +95,13 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         if not ("r_i" in pars.keys()):
             pars["r_i"] = np.array([f(pars["N_star"][i], *args)[i] 
                         for i in range(n_spec)])
-        pars["f"] = lambda N: f(N, *args)
+        def save_f(N):
+            # allow passing infinite species densities to per capita growthrate
+            if np.isinf(N).any():
+                return np.full(N.shape, -np.inf)
+            else:
+                return f(N, *args)
+        pars["f"] = save_f
     else:
         # obtain equilibria densities and invasion growth rates    
         pars = preconditioner(f, args,n_spec, pars, xtol)                  
@@ -107,9 +113,8 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         for j in l_spec:
             if i>=j: # c is assumed to be symmetric, c[i,i] = 1
                 continue
-            c[i,j] = solve_c(pars,[i,j], monotone_f[i] and monotone_f[j],
-                         xtol=xtol)
-            c[j,i] = 1/c[i,j]
+            c[[i,j],[j,i]] = solve_c(pars,[i,j],
+                         monotone_f[i] and monotone_f[j],xtol=xtol)
 
     # compute NO and FD
     NO = np.empty(n_spec)
@@ -119,7 +124,10 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         # creat a list with i at the beginning [i,0,1,...,i-1,i+1,...,n_spec-1]
         sp = np.array([i]+l_spec[:i]+l_spec[i+1:])
         # compute NO and FD
-        NO[i] = NO_fun(pars, c[i, sp[1:]], sp)
+        if (c[i, sp[1:]] == 0).all():
+            NO[i] = 0 # species does not interact with each other species
+        else:
+            NO[i] = NO_fun(pars, c[i, sp[1:]], sp)
         FD[i] = FD_fun(pars, c[i, sp[1:]], sp)
     
     # prepare returning values
@@ -199,7 +207,13 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         except AttributeError: #`pars` isn't an array
             pars[key] = pars_def[key]
             warn(warn_string.format(key,pars_def[key].shape))
-    pars["f"] = lambda N: f(N,*args)
+    def save_f(N):
+            # allow passing infinite species densities to per capita growthrate
+            if np.isinf(N).any():
+                return np.full(N.shape, -np.inf)
+            else:
+                return f(N, *args)
+    pars["f"] = save_f
     
     for i in range(n_spec):
         # to set species i to 0
@@ -254,6 +268,12 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     -------
     c : float, the conversion factor c_sp[0]^sp[1]
     """
+    # check for special cases first
+    no_comp = np.isclose([NO_fun(pars,1, sp),
+                          NO_fun(pars,1, sp[::-1])], [0,0])
+    if no_comp.any():
+        return special_case(no_comp, sp)
+    
     sp = np.asarray(sp)
     
     def inter_fun(c):
@@ -271,7 +291,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
                 "Please pass a better guess for c_i^j via the `pars` argument")
         return c
         
-    # if `f` is monotone then the solution is unique, findint it with a more
+    # if `f` is monotone then the solution is unique, find it with a more
     # robust method
         
     # find interval for brentq method
@@ -292,10 +312,24 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     
     # solve equation
     try:
-        return brentq(inter_fun,a,b)
+        c = brentq(inter_fun,a,b)
     except ValueError:
         raise ValueError("f does not seem to be monotone. Please run with"
                          +"`monotone_f = False`")
+    return c, 1/c # return c_i and c_j = 1/c_i
+
+def special_case(no_comp, sp):
+    # Return c for special case where one spec is not affected by competition
+    
+    warn("Species {} and {} do not seem to interact.".format(sp[0], sp[1]) +
+      " This may result in nonfinite c, ND and FD values.")
+    
+    if no_comp.all():
+        return 0, 0 # species do not interact at all, c set to zero
+    elif (no_comp == [True, False]).all():
+        return 0, np.inf # only first species affected
+    elif (no_comp == [False, True]).all():
+        return np.inf, 0
     
 def NO_fun(pars,c, sp):
     # Compute NO for specis sp and conversion factor c

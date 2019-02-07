@@ -289,7 +289,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
         if np.abs(inter_fun(c))>xtol:
             raise ValueError("Not able to find c_{}^{}.".format(*sp) +
                 "Please pass a better guess for c_i^j via the `pars` argument")
-        return c
+        return c, 1/c
         
     # if `f` is monotone then the solution is unique, find it with a more
     # robust method
@@ -300,7 +300,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     direction = np.sign(inter_fun(a))
     
     if direction == 0: # starting guess for c is correct
-        return a
+        return a, 1/a
     fac = 2**direction
     if not np.isfinite(direction):
         raise InputError("function `f` seems to be returning nonfinite values")

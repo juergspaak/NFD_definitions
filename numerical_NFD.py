@@ -8,7 +8,7 @@ from scipy.optimize import brentq, fsolve
 from warnings import warn
 
 def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
-             experimental = False, from_R = False, xtol = 1e-10):
+             experimental = False, from_R = False, xtol = 1e-5):
     """Compute the ND and FD for a differential equation f
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -232,11 +232,11 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         # Check stability of equilibrium
         # Jacobian of system at equilibrium
         r = np.zeros((n_spec-1, n_spec-1))
-        r[np.triu_indices(n_spec-1)] = info["r"]
-        jac = -np.diag(N_pre).dot(info["fjac"]).dot(r)
-
+        r[np.triu_indices(n_spec-1)] = info["r"].copy()
+        jac = np.diag(N_pre).dot(info["fjac"].T).dot(r)
+        
         # check whether real part of eigenvalues is negative
-        if max(np.real(np.linalg.eigvals(jac)))<0:
+        if max(np.real(np.linalg.eigvals(jac)))>0:
             raise InputError("Found equilibrium is not stable, "
                         + "with species {} absent.".format(i)
                         + " Please provide manually via the `pars` argument")

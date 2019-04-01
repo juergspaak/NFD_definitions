@@ -82,11 +82,11 @@ plt.plot([-0.5,-0.5], [-0.1,0.1], 'p',  markersize = ms,
 plt.plot([0,0], [0,0], '>',  markersize = ms,
          color = "black", label = "neutrality")
 
-plt.plot([0.2,0.2], [-0.3,3], 'D', markersize = ms,
-         color = "black", label = "competitive\nexclusion")
+plt.plot([0.26,0.26], [-0.11,0.0366], '*',  markersize = ms,
+         color = "black", label = "stable\ncoexistence") 
 
-plt.plot([0.6,0.6], [-0.5,1.2], '*',  markersize = ms,
-         color = "black", label = "stable\ncoexistence")
+plt.plot([0.5,0.5], [-0.3,3], 'D', markersize = ms,
+         color = "black", label = "competitive\nexclusion")
 
 plt.plot([1.2,0.8], [2,-0.8], 's', markersize = ms,
          color = "black", label = "parasitism")

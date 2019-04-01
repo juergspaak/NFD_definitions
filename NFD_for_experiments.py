@@ -5,6 +5,7 @@ Numerically compute ND and FD for experimental data
 
 import numpy as np
 import matplotlib.pyplot as plt
+from warnings import warn
 
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.optimize import brentq
@@ -15,8 +16,11 @@ except ImportError:
     # in case this code is used in a submodule, import from the submodule
     from nfd_definitions.numerical_NFD import NFD_model
 
+class InputError(Exception):
+    pass
+
 def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2,
-                     r_i, visualize = True):
+                     r_i, k = 3, visualize = True):
     """Compute the ND and FD for two-species experimental data
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -41,6 +45,8 @@ def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2,
     time_exp2, dens_exp2: Equivalent to exp1
     r_i: ndarray (shape = 2)
         Invasion growth rate of both species
+    k: int, optional, default = 3
+        order of interpolation spline for density over time
     visualize: boolean, optional, default = True
         If true, plot a graph of the growth rates and the percapita growth
         rates of both species. `fig`and `ax` of this figure are returned
@@ -75,6 +81,15 @@ def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2,
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI:
     """
+    # check input experiment one must be increasing
+    if (dens_exp1[:,:-1]>dens_exp1[:,1:]).any():
+        warn("Densities in the first experiment are not strictly"
+                         "increasing")
+    if (dens_exp2[:,:-1]<dens_exp2[:,1:]).any():
+        warn("Densities in the second experiment are not strictly"
+                         "decreasing")
+        
+    
     # combine all data into lists
     times = [None,time_exp1, time_exp2]
     exps = [None,dens_exp1, dens_exp2]
@@ -82,23 +97,21 @@ def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2,
     # monoculture growth rate, assumes that growth rate is constant at
     # the beginning
     f0 = np.log(dens_exp1[:,1]/dens_exp1[:,0])/(time_exp1[1]-time_exp1[0])
-    
     # per capita growth rate for both species in monoculture
-    f = per_capita_growth(times, exps, N_star,f0)
-    
+    f = per_capita_growth(times, exps, N_star,f0, k)
+
     # compute the ND, FD etc. parameters
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
             "r_i": r_i}    
     pars = NFD_model(f, pars = pars, experimental = True)
-    pars["f"] = f
-    
+    pars["f0"] = f0
     if visualize: # visualize results if necessary
         fig, ax = visualize_fun(f,times, exps, N_star, pars)
         return pars, fig, ax
     
     return pars
     
-def per_capita_growth(times, exps, N_star,f0):
+def per_capita_growth(times, exps, N_star,f0, k):
     """interpolate the per capita growth rate of the species
     
     times:
@@ -109,6 +122,8 @@ def per_capita_growth(times, exps, N_star,f0):
         equilibrium density of the species
     f0: float
         monoculture growth rate
+    k: int
+        Order of interpolation spline
         
     Returns
     -------
@@ -119,9 +134,9 @@ def per_capita_growth(times, exps, N_star,f0):
         are assumed to be f(max(exps))
     """
     # percapita growth rates for each of the experiments separately
-    dict_subf = {"f_exp{}_spec{}".format(i,j):
-                dens_to_per_capita(times[i], exps[i][j])
-                for i in [1,2] for j in [0,1]}
+    dict_subf = {"f_exp{}_spec{}".format(exp,spec):
+                dens_to_per_capita(times[exp], exps[exp][spec], k = k)
+                for exp in [1,2] for spec in [0,1]}
     
     # interpolation for datas between the two experiments   
     inter_data0 = np.array([
@@ -167,16 +182,16 @@ def per_capita_growth(times, exps, N_star,f0):
     return f
         
             
-def dens_to_per_capita(time, dens, k = 3):
+def dens_to_per_capita(time, dens, k):
     # convert densities over time to per capita growth rate
     
     # remove nan's
     ind = np.isfinite(dens)
     time = time[ind]
     dens = dens[ind]
-    
-    # interpolate the data
+    # interpolate the data with a spline of order k
     N_t = ius(time,dens,k=k)
+    
     dNdt = N_t.derivative() # differentiate
     def per_capita(N):
         # search for t with N(t) = N
@@ -207,11 +222,11 @@ def visualize_fun(f,times, exps, N_star, pars):
     
     # plot fitted data of exp1 for both species
     ax[0,0].plot(time_1, ius(times[1],exps[1][0])(time_1), label = "fit, exp1")
-    ax[0,0].plot(time_2, ius(times[2],exps[2][0])(time_1), label = "fit, exp2")
+    ax[0,0].plot(time_2, ius(times[2],exps[2][0])(time_2), label = "fit, exp2")
     
     # plot fitted data of exp1 for both species
     ax[0,1].plot(time_1, ius(times[1],exps[1][1])(time_1), label = "fit, exp1")
-    ax[0,1].plot(time_2, ius(times[2],exps[2][1])(time_1), label = "fit, exp2")
+    ax[0,1].plot(time_2, ius(times[2],exps[2][1])(time_2), label = "fit, exp2")
     
     ax[0,0].axhline(N_star[0], linestyle = "dotted", color = "black")
     ax[0,1].axhline(N_star[1], linestyle = "dotted", color = "black")
@@ -229,8 +244,8 @@ def visualize_fun(f,times, exps, N_star, pars):
     
     
     # plot the fitted per capita growth rate
-    N_1 = np.linspace(exps[1][0,0], exps[2][0,0],100)
-    N_2 = np.linspace(exps[1][1,0], exps[2][1,0],100)
+    N_1 = np.linspace(exps[1][0,0], exps[2][0,0],1000)
+    N_2 = np.linspace(exps[1][1,0], exps[2][1,0],1000)
     
     ax[1,0].plot(N_1,[f([N,0])[0] for N in N_1])
     ax[1,1].plot(N_2,[f([0,N])[1] for N in N_2])

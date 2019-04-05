@@ -6,7 +6,7 @@ from matplotlib.cm import rainbow
 import matplotlib.patches as patches
 import numpy as np
 from scipy.optimize import brentq
-
+plt.rcParams["font.family"] = 'Times New Roman'
 np.seterr(all = "ignore")
 
 rep = 5000
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     
     
     # layout
-    plt.legend(loc = "upper left")
+    plt.legend(loc = "upper left", fontsize = 12)
     
     # axis limits
     plt.xlim(min(interspec), max(interspec))
@@ -200,7 +200,7 @@ if __name__ == "__main__":
                  color = colors[key])
     
     # layout
-    plt.legend(loc = "upper left")
+    plt.legend(loc = "upper left", fontsize = 12)
     
     # axis limits
     plt.xlim(min(interspec), max(interspec))

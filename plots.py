@@ -10,7 +10,7 @@ import matplotlib as mpl
 
 mpl.rcParams['mathtext.fontset'] = 'cm'
 mpl.rcParams['mathtext.rm'] = 'serif'
-
+plt.rcParams["font.family"] = 'Times New Roman'
 ###############################################################################
 # Example of Mac Arthur resource model with NO
 fig, ax = plt.subplots(1,2, figsize = (10,3.5))
@@ -60,6 +60,7 @@ fig.savefig("Figure, Limiting factors.pdf")
 ###############################################################################
 # Extended regions
 fig = plt.figure(figsize = (7,7))
+from matplotlib.text import TextPath
 
 x = np.linspace(-1,3,101)
 plt.plot(x,x/(1-x), "black")
@@ -74,29 +75,29 @@ plt.axvline(x=1, color = "black", linestyle = ":")
 plt.xticks([0,1])
 plt.yticks([0,-1])
 
-ms = 10
+ms = 12
+offset = (-4,-4)
 # plot the varius definitions
-plt.plot([-0.5,-0.5], [-0.1,0.1], 'p',  markersize = ms,
-         color = "black", label = "priority effects")
+plt.plot([-0.5,-0.5], [-0.1,0.1], linestyle = "",  markersize = ms,
+         marker = TextPath(offset, "1"), color = "black",
+         label = "priority effects")
 
-plt.plot([0,0], [0,0], '>',  markersize = ms,
-         color = "black", label = "neutrality")
+plt.plot([0,0], [0,0], '>',  linestyle = "",  markersize = ms,
+         marker = TextPath(offset, "2"), color = "black", label = "neutrality")
 
-plt.plot([0.26,0.26], [-0.11,0.0366], '*',  markersize = ms,
-         color = "black", label = "stable\ncoexistence") 
+plt.plot([0.232,0.232], [-0.12968,0.06468], linestyle = "",  markersize = ms,
+         marker = TextPath(offset, "3"),
+         color = "black", label = "coexistence\n(see exp. Fig. 4)") 
 
-plt.plot([0.5,0.5], [-0.3,3], 'D', markersize = ms,
-         color = "black", label = "competitive\nexclusion")
+plt.plot([0.5,0.5], [-0.3,3], linestyle = "",  markersize = ms,
+         marker = TextPath(offset, "4"), color = "black",
+         label = "competitive\nexclusion")
 
-plt.plot([1.2,0.8], [2,-0.8], 's', markersize = ms,
-         color = "black", label = "parasitism")
+plt.plot([1.2,0.8], [2,-0.8], 's', linestyle = "",  markersize = ms,
+         marker = TextPath(offset, "5"), color = "black", label = "parasitism")
 
-plt.plot([1.4,1.4], [-0.9,1.7], 'P',  markersize = ms,
-         color = "black", label = "mutualism")
-
-
-
-
+plt.plot([1.4,1.4], [-0.9,1.7], linestyle = "",  markersize = ms,
+         marker = TextPath(offset, "6"), color = "black", label = "mutualism")
 
 coex_x = np.append(np.linspace(x[0],1-1e-3),x[[-1,-1,0]])
 coex_y = coex_x/(1-coex_x)
@@ -107,7 +108,6 @@ plt.fill(coex_x,coex_y, color = "grey",alpha = 0.5)
 plt.legend(numpoints = 1)
 
 fig.savefig("Extended Coexistence region.pdf")
-mpl.rcParams["text.usetex"] = False
 
 ###############################################################################
 # Experimental setup

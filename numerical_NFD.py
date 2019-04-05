@@ -23,7 +23,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     n_spec : int, optional, default = 2
         number of species in the system
     args : tuple, optional
-        Any extra arguments to `f
+        Any extra arguments to `f`
     monotone_f : boolean or array of booleans (lenght: n_spec), default = True
         Whether ``f_i(N_i,0)`` is monotonly decreasing in ``N_i``
         Can be specified for each function separatly by passing an array.
@@ -59,7 +59,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         N_star[i] equilibrium density with species `i`
         absent. N_star[i,i] is 0
     ``r_i`` : ndarray (shape = n_spec)
-        invsaion growth rates of the species
+        invasion growth rates of the species
     ``c`` : ndarray (shape = (n_spec, n_spec))
         The conversion factors from one species to the
         other. 
@@ -75,17 +75,27 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     Literature:
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI: 10.1101/482703
-    """ 
+    """
     if from_R:
         if n_spec-int(n_spec) == 0:
             n_spec = int(n_spec)
         else:
             raise InputError("Number of species (`n_spec`) must be an integer")
         fold = f
-
-        def f(N, *args):
+        
+        def f(N):
             # translate dataframes, matrices etc to np.array
-            return np.array(fold(N,*args)).reshape(-1)  
+            return np.array(fold(N)).reshape(-1)
+        
+        if not(pars is None):
+            pars_new = {}
+            try:
+                for key in pars.keys(): # convert to np array and make writable
+                    pars_new[key] = np.array(pars[key])
+                pars = pars_new
+            except AttributeError:
+                raise InputError("Argument ``pars`` must be a dictionary or a"
+                    "labeled list. e.g. ``pars = list(N_star = N_star)")
     # check input on correctness
     monotone_f = __input_check__(n_spec, f, args, monotone_f)
     
@@ -144,7 +154,7 @@ def __input_check__(n_spec, f, args, monotone_f):
     
     # check whether `f` is a function and all species survive in monoculutre
     try:
-        f0 = f(np.zeros(n_spec), *args)
+        f0 = f(np.zeros(n_spec))
         if f0.shape != (n_spec,):
             raise InputError("`f` must return an array of length `n_spec`")   
     except TypeError:
@@ -350,3 +360,4 @@ def switch_niche(N,sp,c=0):
     N[sp[0]] += np.nansum(c*N[sp[1:]])
     N[sp[1:]] = 0
     return N
+

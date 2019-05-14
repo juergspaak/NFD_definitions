@@ -40,7 +40,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
             Starting guess for the conversion factors from one species to the
             other. `c` is assumed to be symmetric an only the uper triangular
             values are relevant
-    force: boolean, default False
+    experimental: boolean, default False
         If True the parameters given in pars are assumed to be exact and are
         not checked. Should be set to True when used in combination with
         experimental data.
@@ -76,17 +76,18 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI: 10.1101/482703
     """
+    f(np.zeros(int(n_spec)))
     if from_R:
         if n_spec-int(n_spec) == 0:
             n_spec = int(n_spec)
         else:
             raise InputError("Number of species (`n_spec`) must be an integer")
         fold = f
-        
+        #f(0)
         def f(N):
             # translate dataframes, matrices etc to np.array
             return np.array(fold(N)).reshape(-1)
-        
+        """
         if not(pars is None):
             pars_new = {}
             try:
@@ -95,7 +96,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
                 pars = pars_new
             except AttributeError:
                 raise InputError("Argument ``pars`` must be a dictionary or a"
-                    "labeled list. e.g. ``pars = list(N_star = N_star)")
+                    "labeled list. e.g. ``pars = list(N_star = N_star)")"""
     # check input on correctness
     monotone_f = __input_check__(n_spec, f, args, monotone_f)
     
@@ -165,11 +166,11 @@ def __input_check__(n_spec, f, args, monotone_f):
         f = lambda N, *args: np.array(fold(N, *args))
         f0 = f(np.zeros(n_spec), *args)
         warn("`f` does not return a proper `np.ndarray`")
-        
+    """    
     if min(f0)<=0 or (not np.all(np.isfinite(f0))):
         raise InputError("All species must have positive monoculture growth"
                     +"i.e. `f(0)>0`. Especially this value must be defined")
-    
+    """
     # broadcast monotone_f if necessary
     return np.logical_and(monotone_f, np.full(n_spec, True, bool))
         

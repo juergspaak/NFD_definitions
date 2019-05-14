@@ -5,7 +5,7 @@ Create the plots used in the manuscript
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib import rc
+
 plt.rcParams["font.family"] = 'Times New Roman'
 plt.rcParams['mathtext.fontset'] = 'cm'
 plt.rcParams['mathtext.rm'] = 'serif'

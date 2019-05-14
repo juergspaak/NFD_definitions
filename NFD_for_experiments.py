@@ -198,6 +198,7 @@ def per_capita_growth(times, exps, N_star,f0, k, s, log):
     
     # per capita growth rate for each species, using different cases
     def f_spec(N,i):
+        # `N` species density, `i` speces index
         if N<exps[1][i,0]: # below minimum, use f0
             return f0[i]
         elif N<exps[1][i,-1]: # use values of exp1

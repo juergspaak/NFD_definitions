@@ -19,7 +19,7 @@ except ImportError:
 class InputError(Exception):
     pass
 
-def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2, r_i,
+def NFD_experiment(dens, time, r_i, N_star = None, na_action = "impute",
                  f0 = "spline", k = 3, s = None, log = True, visualize = True):
     """Compute the ND and FD for two-species experimental data
     
@@ -31,18 +31,28 @@ def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2, r_i,
     
     Parameters
     -----------
-    N_star: ndarray (shape = 2)
-        Monoculture equilibrium density for both species
-    time_exp1: array like
-        Timepoints at which measurments of exp1 were taken in increasing order.
-        If timepoints differ from species to species time_exp1 should be the
-        union of all timepoints, and missing data should be indicated in
-        exp1_data.
-    dens_ex12: ndarray (shape = (2, len(time_exp1)))
-        exp1_data[i,t] is the density of species i at time time_exp1[t] in exp1
-        np.nan are allowed in case not all species have the same timeline for
-        exp1
-    time_exp2, dens_exp2: Equivalent to exp1
+    N_star: None or ndarray (shape = 2)
+        Monoculture equilibrium density for both species. If `None` N_star
+        will be computed automatically.
+    dens: ndarray (shape = (2, r, t))
+        Densities of the species over time. dens[i,r,t] is the density of
+        species i in replica r at time time[t]. The different starting
+        densities can both be combined into different replicas.
+        `np.nan` are allowed, but will be removed or imputed (see `na.action`).
+        Alternatively (not recommended) `dens` can be a list-structure similar
+        to (2,r,t) wherein each list can have separate length.
+        If this is the case, `time` must also be a list, containing the
+        datapoint for each timepoint.
+    time: array like
+        Timepoints at which measurments were taken in increasing order.
+        If timepoints differ for different experiment `time` must contain all 
+        timepoints. Alternatively, if `dens` is a list-structure time must have
+        the same structure.
+    na_action: "remove" or "impute" or "impute_geom" (default = "impute")
+        If "remove" all datapoints with NA will be removed. This will cause the
+        lost of the growth rate before and after the measured NA. Alternatively
+        the missing value will be imputed using the datapoint before and after
+        either using the mean ("impute") or the geometric mean ("impute_geom").        
     r_i: ndarray (shape = 2)
         Invasion growth rate of both species
     f0: "Linear", "spline" or ndarray, optional (shape = 2)
@@ -100,31 +110,30 @@ def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2, r_i,
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI:
     """
+    '''
     # check input experiment one must be increasing
     if (dens_exp1[:,:-1]>dens_exp1[:,1:]).any():
         warn("Densities in the first experiment are not strictly"
                          "increasing")
     if (dens_exp2[:,:-1]<dens_exp2[:,1:]).any():
         warn("Densities in the second experiment are not strictly"
-                         "decreasing")
-        
-    # check input of fitting, convert parameters to lists
+                         "decreasing")'''            
     try:
         k[0]
     except TypeError:
-        k = 4*[k]
+        k = [k,k]
     try:
         s[0]
     except TypeError:
-        s = 4*[s]
-        
-    # combine all data into lists
-    times = [None, time_exp1, time_exp2]
-    exps = [None, dens_exp1, dens_exp2]
-    
+        s = [s,s]
+    dens = np.array(dens)
+    time = np.array(time)
     # per capita growth rate for both species in monoculture
-    f, dict_N_t = per_capita_growth(times, exps, N_star,f0, k, s, log)
+    f, dict_N_t = per_capita_growth(dens, time, N_star,f0, k, s, log)
 
+
+    if N_star is None:
+        N_star = np.nanmean(dens, axis = (1,2))
     # compute the ND, FD etc. parameters
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
             "r_i": r_i}    
@@ -135,7 +144,7 @@ def NFD_experiment(N_star, time_exp1, dens_exp1, time_exp2, dens_exp2, r_i,
     
     return pars, dict_N_t
     
-def per_capita_growth(times, exps, N_star,f0, k, s, log):
+def per_capita_growth(dens, time, N_star, f0, k, s, log):
     """interpolate the per capita growth rate of the species
     
     times:
@@ -162,35 +171,18 @@ def per_capita_growth(times, exps, N_star,f0, k, s, log):
         are assumed to be f(max(exps))
     """
     # percapita growth rates for each of the experiments separately
-    combs = [[exp,spec] for exp in [1,2] for spec in [0,1]]
     dict_subf = {} # contains f for each sub experiment and species
     dict_N_t = {} # contains fitted growth curves for each sub experiment
-    for i, comb in enumerate(combs):
-        f_N, N_t = dens_to_per_capita(times[comb[0]], exps[comb[0]][comb[1]],
-                        k[i], s[i], log)
-        dict_subf["f_exp{}_spec{}".format(comb[0],comb[1])] = f_N
-        dict_N_t["exp{}_spec{}".format(comb[0],comb[1])] = N_t
-        
-    
-    # interpolation for datas between the two experiments   
-    inter_data0 = np.array([
-            [exps[1][0,-1], dict_subf["f_exp1_spec0"](exps[1][0,-1])],
-            [N_star[0],0],
-            [exps[2][0,-1], dict_subf["f_exp2_spec0"](exps[2][0,-1])]
-            ])
-    inter_data1 = np.array([
-            [exps[1][1,-1], dict_subf["f_exp1_spec1"](exps[1][1,-1])],
-            [N_star[1],0],
-            [exps[2][1,-1], dict_subf["f_exp2_spec1"](exps[2][1,-1])]
-            ])
-    # quadrativ interpolation
-    dict_subf["f_mid_spec0"] = uni_sp(*inter_data0.T, k = 2, s = 0)
-    dict_subf["f_mid_spec1"] = uni_sp(*inter_data1.T, k = 2, s = 0)
+    for i in range(2):
+        f_N, N_t = dens_to_per_capita(dens[i], time, k[i], s[i], log, f0[i])
+        dict_subf["f_spec{}".format(i)] = f_N
+        dict_N_t["spec{}".format(i)] = N_t
     
     # monoculture growth rate, assumes that growth rate is constant at
     # the beginning
     if f0 == "spline":
-        f0 = [dict_subf["f_exp1_spec"+str(i)](exps[1][i,0]) for i in [0,1]]
+        f0 = [dict_subf["f_spec"+str(i)](np.nanmin(dens[i])) for i in [0,1]]
+        print("f0", f0)
     elif f0 == "linear":
         f0 = np.log(exps[1][:,1]/exps[1][:,0])/(times[1][1]-times[1][0])
     # other wise f0 is assumed to be an array of shape (2,)
@@ -199,16 +191,12 @@ def per_capita_growth(times, exps, N_star,f0, k, s, log):
     # per capita growth rate for each species, using different cases
     def f_spec(N,i):
         # `N` species density, `i` speces index
-        if N<exps[1][i,0]: # below minimum, use f0
+        if N<np.nanmin(dens[i]): # below minimum, use f0
             return f0[i]
-        elif N<exps[1][i,-1]: # use values of exp1
-            return dict_subf["f_exp1_spec"+str(i)](N)
-        elif N<exps[2][i,-1]: # values between the two experiments
-            return dict_subf["f_mid_spec" +str(i)](N)
-        elif N<=exps[2][i,0]*0.99: # use values of exp2
-            return dict_subf["f_exp2_spec"+str(i)](N)
+        elif N>np.nanmax(dens[i]): # above maximum, use maximal entry
+            return dict_subf["f_spec"+str(i)](np.nanmax(dens[i]))
         else: # above maximum
-            return dict_subf["f_exp2_spec"+str(i)](exps[2][i,0]*0.99)
+            return dict_subf["f_spec"+str(i)](N)
     
     def f(N):
         """ per capita growth rate of species
@@ -224,40 +212,32 @@ def per_capita_growth(times, exps, N_star,f0, k, s, log):
         return ret
     
     return f, dict_N_t
-        
             
-def dens_to_per_capita(time, dens, k, s, log):
+def dens_to_per_capita(dens, time, k, s, log, f0 = None):
     # convert densities over time to per capita growth rate
-    
-    # remove nan's
-    ind = np.isfinite(dens)
-    time = time[ind]
-    dens = dens[ind]
-    if log: # interpolate log data
-        N_t_log = uni_sp(time, np.log(dens), k = k, s = s)
-        N_t = lambda t: np.exp(N_t_log(t))
-        dNdt = lambda t: N_t(t)*N_t_log.derivative()(t) # differentiate
-    else: # interpolate the data with a spline of order k
-        N_t = uni_sp(time, dens, k=k,  s = s)
-        dNdt = N_t.derivative() # differentiate
-        
-    range_uni_sp = [N_t(t) for t in time] # min_max of exp. range
-    t_min = time[np.argmin(range_uni_sp)] # time of minimal density
-    t_max = time[np.argmax(range_uni_sp)] # time of maximal density
-    
-    def per_capita(N):
-        # search for t with N(t) = N
-        try:
-            t_N = brentq(lambda t: N_t(t)-N,t_min, t_max)
-            
-        except ValueError:
-            if N<min(range_uni_sp): # density below minimal density
-                t_N = t_min
-            elif N > max(range_uni_sp): # density above maximal density
-                t_N = t_max
-                
-        return dNdt(t_N)/N
+    time_diff = time[1:]-time[:-1]
+    per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
 
+    # remove nan's
+    finite = np.isfinite(dens[...,:-1]) & np.isfinite(per_cap_growth)
+    dens_finite = dens[...,:-1][finite]
+    per_cap_growth = per_cap_growth[finite]
+    # sort for increasing dens, needed for spline
+    ind = np.argsort(dens_finite)
+    dens_finite = dens_finite[ind]
+    per_cap_growth = per_cap_growth[ind]
+    if not (f0 is None):
+        per_cap_growth[0] = f0
+        w = np.ones(len(dens_finite))
+        w[0] = 1e10 # to force spline through first point
+    else:
+        w = np.ones(len(dens_finite))
+    
+    dNdt = uni_sp(np.log(dens_finite), per_cap_growth, k = k, s = s, w = w)
+    def per_capita(N):
+        # compute the percapita growth rate of the species        
+        return dNdt(np.log(N))
+    N_t = None
     return per_capita, N_t
 
 def visualize_fun(f,times, exps, N_star, pars, dict_N_t, log):

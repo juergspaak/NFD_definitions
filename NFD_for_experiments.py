@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from warnings import warn
 
 from scipy.interpolate import UnivariateSpline as uni_sp
-from scipy.optimize import brentq
+from scipy.optimize import brentq, fsolve
+from scipy.integrate import odeint
 
 try:
     from numerical_NFD import NFD_model
@@ -19,8 +20,9 @@ except ImportError:
 class InputError(Exception):
     pass
 
-def NFD_experiment(dens, time, r_i, N_star = None, na_action = "impute",
-                 f0 = "spline", k = 3, s = None, log = True, visualize = True):
+def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
+                 f0 = "spline", k = 3, s = None, log = True,
+                 id_exp_1 = None, visualize = True, extrapolate = "True"):
     """Compute the ND and FD for two-species experimental data
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -48,11 +50,13 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "impute",
         If timepoints differ for different experiment `time` must contain all 
         timepoints. Alternatively, if `dens` is a list-structure time must have
         the same structure.
-    na_action: "remove" or "impute" or "impute_geom" (default = "impute")
+    na_action: "remove" or "impute" or "impute_geom" (default = "remove")
         If "remove" all datapoints with NA will be removed. This will cause the
         lost of the growth rate before and after the measured NA. Alternatively
-        the missing value will be imputed using the datapoint before and after
-        either using the mean ("impute") or the geometric mean ("impute_geom").        
+        the missing value will be imputed using a running mean ("impute") or
+        a running geometric mean ("impute_geom") on 3 datapoints.
+        Imputing NA is assuming equidistant timepoints, if this is not the case
+        imputing NA is not recommended.
     r_i: ndarray (shape = 2)
         Invasion growth rate of both species
     f0: "Linear", "spline" or ndarray, optional (shape = 2)
@@ -100,7 +104,7 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "impute",
     ``FD`` : ndarray (shape = n_spec)
         Fitness difference
     ``f0``: ndarray (shape = n_spec)
-        no-competition growth rate, f(0)
+        monoculture growth rate, f(0)
     fig: Matplotlib figure
         only returned if ``visualize`` is True
     ax: Matplotlib axes
@@ -117,34 +121,75 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "impute",
                          "increasing")
     if (dens_exp2[:,:-1]<dens_exp2[:,1:]).any():
         warn("Densities in the second experiment are not strictly"
-                         "decreasing")'''            
-    try:
-        k[0]
-    except TypeError:
-        k = [k,k]
-    try:
-        s[0]
-    except TypeError:
-        s = [s,s]
+                         "decreasing")'''  
+    input_par, log, id_exp_1 = __input_check_exp__(k , s, f0, N_star,
+                    id_exp_1, log, extrapolate, dens)         
+    
     dens = np.array(dens)
     time = np.array(time)
+        
+    # impute na if necessary
+    if na_action == "impute": # compute mean
+        imp_av = lambda X, axis: log["exp"](np.nanmean(log["log"](X),
+                                    axis = axis))
+        na_imputed = dens.copy()
+        na_imputed[...,1:-1] = imp_av([na_imputed[...,:-2],
+                na_imputed[...,1:-1], na_imputed[...,2:]], axis = 0)
+        dens[np.isnan(dens)] = na_imputed[np.isnan(dens)] # replace imputation
+    
     # per capita growth rate for both species in monoculture
-    f, dict_N_t = per_capita_growth(dens, time, N_star,f0, k, s, log)
-
+    f, f_spec = per_capita_growth(dens, time, input_par, log)
 
     if N_star is None:
-        N_star = np.nanmean(dens, axis = (1,2))
+        N_star = log["nanmean"](dens[...,-1], axis = (1)) # starting guess
+        # compute N_star
+        for i in range(2):
+            N_star[i] = fsolve(f_spec, N_star[i], args = (i,))
+    c = np.ones((2,2))
+    c[[1,0],[0,1]] = [N_star[0]/N_star[1], N_star[1]/N_star[0]]    
     # compute the ND, FD etc. parameters
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
-            "r_i": r_i}    
+            "r_i": r_i, "f": f, "c": c}
     pars = NFD_model(f, pars = pars, experimental = True)
+    # xxx compute R^2 for both per_capita growth rate and for densities over time
+    N_t_fun, N_t_data = dens_over_time(f_spec, time, dens, id_exp_1)
     if visualize: # visualize results if necessary
-        fig, ax = visualize_fun(f,times, exps, N_star, pars, dict_N_t, log)
-        return pars, dict_N_t, fig, ax
+        fig, ax = visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec)
+        return pars, N_t_fun, fig, ax
     
-    return pars, dict_N_t
+    return pars
+
+def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate, dens):
+    # convert input parameters to right format if necessary
+    input_par = {"k":k, "s":s, "f0": f0, "N_star": N_star}
+    for key in input_par.keys():
+        try:
+            input_par[key][0]
+        except TypeError:
+            input_par[key] = 2*[input_par[key]]
+            
+    input_par["extrapolate"] = extrapolate
+ 
+    if id_exp_1 is None:
+        id_exp_1 = np.full(dens.shape[1], False)
+        id_exp_1[:len(id_exp_1)//2] = True
+        
+    if log: # fitting, imputing, plotting etc is all done in logspace
+        geo_nanmean = lambda x, axis = None: np.exp(np.nanmean(np.log(x)
+                , axis = axis))
+        geo_mean = lambda x, axis = None: np.exp(np.mean(np.log(x)
+                , axis = axis))
+        log = {"log": np.log, "exp": np.exp, "log_space": True,
+               "nanmean": geo_nanmean, "mean": geo_mean}
+    else: # log and exp functions are identity functions
+        log = {"log": lambda x: x , "exp": lambda x: x, "log_space": False,
+               "nanmean": np.nanmean, "mean": np.mean}
+        
+    return input_par, log, id_exp_1
+    # xxx provide useful s if s is passed as None
     
-def per_capita_growth(dens, time, N_star, f0, k, s, log):
+    
+def per_capita_growth(dens, time, input_par, log):
     """interpolate the per capita growth rate of the species
     
     times:
@@ -171,32 +216,38 @@ def per_capita_growth(dens, time, N_star, f0, k, s, log):
         are assumed to be f(max(exps))
     """
     # percapita growth rates for each of the experiments separately
-    dict_subf = {} # contains f for each sub experiment and species
-    dict_N_t = {} # contains fitted growth curves for each sub experiment
+    dict_f = {} # contains per capita growth rate for each specie in monocul.
     for i in range(2):
-        f_N, N_t = dens_to_per_capita(dens[i], time, k[i], s[i], log, f0[i])
-        dict_subf["f_spec{}".format(i)] = f_N
-        dict_N_t["spec{}".format(i)] = N_t
+        f_N = dens_to_per_capita(dens[i], time, input_par, log, i)
+        dict_f["spec{}".format(i)] = f_N
     
+    """
     # monoculture growth rate, assumes that growth rate is constant at
     # the beginning
+    # xxx f0 has already been passed before?
     if f0 == "spline":
-        f0 = [dict_subf["f_spec"+str(i)](np.nanmin(dens[i])) for i in [0,1]]
+        f0 = [dict_f["spec{}".format(i)](np.nanmin(dens[i])) for i in [0,1]]
         print("f0", f0)
     elif f0 == "linear":
         f0 = np.log(exps[1][:,1]/exps[1][:,0])/(times[1][1]-times[1][0])
     # other wise f0 is assumed to be an array of shape (2,)
+    """
             
     
     # per capita growth rate for each species, using different cases
+    mins = np.nanmin(dens, axis = (1,2))
+    maxs = np.nanmax(dens, axis = (1,2))
+    
     def f_spec(N,i):
         # `N` species density, `i` speces index
-        if N<np.nanmin(dens[i]): # below minimum, use f0
-            return f0[i]
-        elif N>np.nanmax(dens[i]): # above maximum, use maximal entry
-            return dict_subf["f_spec"+str(i)](np.nanmax(dens[i]))
+        # below minimum, use f0
+        if (N < mins[i]): 
+            return dict_f["spec{}".format(i)](mins[i])
+        # above maximum, use maximal entry
+        elif (N > maxs[i]) and not input_par["extrapolate"]: 
+            return dict_f["spec{}".format(i)](maxs[i])
         else: # above maximum
-            return dict_subf["f_spec"+str(i)](N)
+            return dict_f["spec{}".format(i)](N)
     
     def f(N):
         """ per capita growth rate of species
@@ -211,141 +262,166 @@ def per_capita_growth(dens, time, N_star, f0, k, s, log):
         ret[spec_foc] = f_spec(max(N),spec_foc)
         return ret
     
-    return f, dict_N_t
-            
-def dens_to_per_capita(dens, time, k, s, log, f0 = None):
+    return f, f_spec
+
+def dens_to_per_capita(dens, time, input_par, log, i):
     # convert densities over time to per capita growth rate
     time_diff = time[1:]-time[:-1]
     per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
 
+    # use middle point for growth rate, similar in plotting function
+    dens_mid = log["nanmean"]([dens[...,1:], dens[...,:-1]], axis = 0)
+    
     # remove nan's
-    finite = np.isfinite(dens[...,:-1]) & np.isfinite(per_cap_growth)
-    dens_finite = dens[...,:-1][finite]
+    finite = np.isfinite(dens_mid) & np.isfinite(per_cap_growth)
+    dens_finite = dens_mid[finite]
     per_cap_growth = per_cap_growth[finite]
+    w = np.ones(len(dens_finite)) # weighting for univariate spline
+    
+    # add predefined N_star value if needed
+    if not (input_par["N_star"][i] is None):
+        dens_finite = np.append(dens_finite, input_par["N_star"][i])
+        per_cap_growth = np.append(per_cap_growth, 0)
+        w = np.append(w,input_par["s"][i]*1e10)
+    
+    # remove double values (can occur from imputing na)
+    unique = dens_finite[1:]>dens_finite[:-1]
+    unique = np.append([True], unique)
+    dens_finite = dens_finite[unique]
+    per_cap_growth = per_cap_growth[unique]
+    w = w[unique]
+    
     # sort for increasing dens, needed for spline
     ind = np.argsort(dens_finite)
     dens_finite = dens_finite[ind]
     per_cap_growth = per_cap_growth[ind]
-    if not (f0 is None):
-        per_cap_growth[0] = f0
-        w = np.ones(len(dens_finite))
-        w[0] = 1e10 # to force spline through first point
-    else:
-        w = np.ones(len(dens_finite))
+    w = w[ind]
     
-    dNdt = uni_sp(np.log(dens_finite), per_cap_growth, k = k, s = s, w = w)
+    # is f0 predefined?
+    if not (input_par["f0"][i] is None):
+        per_cap_growth[0] = input_par["f0"][i]
+        w[0] = input_par["s"][i]*1e10 # to force spline through first point
+    
+    dNdt = uni_sp(log["log"](dens_finite), per_cap_growth,
+                  k = input_par["k"][i], s = input_par["s"][i], w = w)
+    
     def per_capita(N):
         # compute the percapita growth rate of the species        
-        return dNdt(np.log(N))
-    N_t = None
-    return per_capita, N_t
+        return dNdt(log["log"](N))
+    return per_capita
 
-def visualize_fun(f,times, exps, N_star, pars, dict_N_t, log):
+def dens_over_time(f_spec, time, dens, id_exp_1):
+    # compute the densities over time for both species
+    N_t_fun = {} # contains a function to compute densities over time
+    N_t_data = {} # contains the densities over time
+    for i in range(2):
+        for start in ["low", "high"]:
+            key = "spec{}_{}".format(i, start)
+            if start == "low":
+                N_start = np.nanmean(dens[i, id_exp_1, 0])
+            else:
+                N_start = np.nanmean(dens[i, ~id_exp_1, 0])
+            N_t_fun[key] = lambda time, i = i, N_start = N_start: odeint(
+                    lambda N,t: N*f_spec(N,i), N_start, np.append(0,time))[1:]
+            N_t_data[key] = N_t_fun[key](time)
+    return N_t_fun, N_t_data
+    
+def visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec):
     # visualize the fitted population density and the per capita growthrate
-    fig, ax = plt.subplots(2,2, figsize = (11,11),
+    fig, ax = plt.subplots(2,2, figsize = (12,12),
                            sharey = "row", sharex ="row")
+    # plot the measured densities and the fitted densities
+    col = ["black", "grey"]
+    for i in range(2):
+        j = [1,0][i] # the index of the other species
     
-    # plot the densities over time
-    # plot real data of exp1 for both species
-    ax[0,0].scatter(times[1], exps[1][0], color = "black")
-    ax[0,1].scatter(times[1], exps[1][1], color = "black")
-    
-    # plot real data of exp2 for both species
-    ax[0,0].scatter(times[2], exps[2][0],facecolor = "none", color = "black")
-    ax[0,1].scatter(times[2], exps[2][1],facecolor = "none", color = "black")
-    
-    # time lines
-    time_1 = np.linspace(*times[1][[0,-1]], 100)
-    time_2 = np.linspace(*times[2][[0,-1]], 100)
-    
-    # plot fitted data of exp1 for first
-    ax[0,0].plot(time_1, dict_N_t["exp1_spec0"](time_1),label = "fit, exp1")
-    ax[0,0].plot(time_2, dict_N_t["exp2_spec0"](time_2),label = "fit, exp2")
-    
-    # plot fitted data of exp1 for second
-    ax[0,1].plot(time_1, dict_N_t["exp1_spec1"](time_1),label = "fit, exp1")
-    ax[0,1].plot(time_2, dict_N_t["exp2_spec1"](time_2),label = "fit, exp2")
-    
-    ax[0,0].axhline(N_star[0], linestyle = "dotted", color = "black")
-    ax[0,1].axhline(N_star[1], linestyle = "dotted", color = "black")
-    
-    ax[0,0].legend()
-    ax[0,1].legend()
-    
-    # add axis labeling   
-    ax[0,0].set_title("Species 1, densities")
-    ax[0,1].set_title("Species 2, densities")
-    
-    ax[0,0].set_ylabel(r"Densities $N_i(t)$")
-    ax[0,0].set_xlabel(r"Time $t$")
-    ax[0,1].set_xlabel(r"Time $t$")
-    
-    # log transform y axis
-    if log:
+        # plot the densities over time
+        # plot real data of exp1 for both species
+        ax[0,i].plot(time, dens[i, id_exp_1].T, '^', color = col[i])
+        
+        # plot real data of exp2 for both species
+        ax[0,i].plot(time, dens[i, ~id_exp_1].T, 'o', color = col[i])
+        
+        # time lines
+        time_fine = np.linspace(*time[[0,-1]], 100)
+        # plot fitted data of exp1 and exp2
+        ax[0,i].plot(time_fine, N_t_fun["spec{}_low".format(i)](time_fine),
+          '-', color = "black", label = "fit, exp_low")
+        ax[0,i].plot(time_fine, N_t_fun["spec{}_high".format(i)](time_fine),
+          '--', color = "black", label = "fit, exp_high")
+        
+        ax[0,i].axhline(pars["N_star"][j,i], color = "green")
+        
+        # add axis labeling   
+        ax[0,i].set_title("A; Species {}, densities".format(i+1))
+        
+        ax[0,0].set_ylabel(r"Densities $N_i(t)$")
+        ax[0,i].set_xlabel(r"Time $t$")
+        ax[0,i].legend()
+        
+
+    # plot the per capita growth rate
+    time_diff = time[1:]-time[:-1]
+    per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
+    for i in range(2):
+        j = [1,0][i] 
+        ax[1,i].plot(dens[i, :, :-1], per_cap_growth[i], 'o', color = col[i])
+        dens_range = log["exp"](np.linspace(
+                *np.nanpercentile(log["log"](dens[i]),[0,100]), 100))
+        ax[1,i].plot(dens_range, [f_spec(de, i) for de in dens_range],
+          color = "blue", label = r"$f_{}(N,0)$".format(i+1))
+        
+        # add equilibrium densities
+        ax[1,i].axhline(0, linestyle = '--', color = "grey")
+        ax[1,i].axvline(pars["N_star"][j,i], linestyle = "-", color = "green",
+          label = r"$N^*_{}$".format(i+1))
+        ax[1,i].axhline(pars["r_i"][i], linestyle = ':', color = "orange",
+          label = r"$r_{}$ (invasion)".format(i+1))
+         
+    if log["log"]:
+        # change to log scale
         ax[0,0].semilogy()
-        ax[0,1].semilogy()
-    
-    # plot the fitted per capita growth rate
-    if log:
-        N_1 = np.exp(np.linspace(np.log(exps[1][0,0]), np.log(exps[2][0,0])
-                ,100))
-        N_2 = np.exp(np.linspace(np.log(exps[1][1,0]), np.log(exps[2][1,0])
-                ,100))
-        ax[1,0].semilogx()
         ax[1,1].semilogx()
-    else:
-        N_1 = np.linspace(exps[1][0,0], exps[2][0,0],100)
-        N_2 = np.linspace(exps[1][1,0], exps[2][1,0],100)
     
-    ax[1,0].plot(N_1,[f([N,0])[0] for N in N_1])
-    ax[1,1].plot(N_2,[f([0,N])[1] for N in N_2])
-    
-    # add equilirium and 0 axis line
-    ax[1,0].axhline(0,linestyle = "dotted", color = "black")
-    ax[1,0].axvline(N_star[0],linestyle = "dotted", color = "black")
-    ax[1,0].text(N_star[0], ax[1,0].get_ylim()[1]*0.9,r"equi. $N_1^*$"
-          , rotation = 90, fontsize = 14, ha = "right")
-    
-    ax[1,1].axhline(0,linestyle = "dotted", color = "black")
-    ax[1,1].axvline(N_star[1],linestyle = "dotted", color = "black")
-    ax[1,1].text(N_star[1], ax[1,1].get_ylim()[1]*0.9,r"equi. $N_2^*$"
-          , rotation = 90, fontsize = 14, ha = "right")
-    
-    # add points assuming constant growth between two measurments
-    growth_1 = np.log(exps[1][:,1:]/exps[1][:,:-1])
-    growth_2 = np.log(exps[2][:,1:]/exps[2][:,:-1])
-    per_cap_1 = growth_1/(times[1][1:] - times[1][:-1])
-    per_cap_2 = growth_2/(times[2][1:] - times[2][:-1])
-    
-    if log: # take geometric average between two densities
-        av_dens_1 = np.sqrt(exps[1][:,1:] * exps[1][:,:-1])
-        av_dens_2 = np.sqrt(exps[2][:,1:] * exps[2][:,:-1])
-    else:
-        av_dens_1 = (exps[1][:,1:] + exps[1][:,:-1])/2
-        av_dens_2 = (exps[2][:,1:] + exps[2][:,:-1])/2
-    
-    # plot the measured per capita growth rates
-    ax[1,0].plot(av_dens_1[0], per_cap_1[0], 'o', label = "measured")
-    ax[1,0].plot(av_dens_2[0], per_cap_2[0], 'o')
-    ax[1,1].plot(av_dens_1[1], per_cap_1[1], 'o')
-    ax[1,1].plot(av_dens_2[1], per_cap_2[1], 'o')
-    
-    # add point where ND equality was computed
-    x_dist = ax[1,0].get_xlim()[1]-ax[1,0].get_xlim()[0]
-    c_N_star = pars["c"][[0,1],[1,0]]*N_star[[1,0]]
-    ax[1,0].plot(c_N_star[0], f([c_N_star[0],0])[0], 'o')
-    
-    ax[1,0].text(c_N_star[0]+0.03*x_dist, f([c_N_star[0],0])[0],
-                  r"$c_2\cdot N_2^*$", fontsize =14)
-    ax[1,1].plot(c_N_star[1], f([0,c_N_star[1]])[1], 'o')
-    ax[1,1].text(c_N_star[1]+0.03*x_dist, f([0,c_N_star[1]])[1],
-                  r"$c_1\cdot N_1^*$", fontsize = 14)
-    
-    # axis labeling
-    ax[1,0].set_title("Species 1, per capita growth")
-    ax[1,1].set_title("Species 2, per capita growth")
-    
-    ax[1,0].set_ylabel(r"Percapita growth rate $f_i(N_i,0)$")
-    ax[1,0].set_xlabel(r" Density $N_1$")
-    ax[1,1].set_xlabel(r" Density $N_2$")
+    # add converted densities of other species
+    for i in range(2):
+        j = [1,0][i] 
+        N_star_j = (pars["N_star"]*pars["c"])[i,j]
+        exp_id = "low" if N_star_j < pars["N_star"][j,i] else "high"
+        
+        ax[1,i].plot(N_star_j, f_spec(N_star_j, i), 'ro',
+          label = r"$c_{}N_{}^*$".format(j+1,j+1))
+        
+        if N_star_j > np.nanmax(dens[i]):
+            extend = log["exp"](np.linspace(log["log"](np.nanmax(dens[i])),
+                        log["log"](N_star_j)))
+            ax[1,i].plot(extend, [f_spec(N, i) for N in extend],
+              "--", color = "blue")
+            continue
+        elif N_star_j < np.nanmin(dens[i]):
+            extend = log["exp"](np.linspace(log["log"](np.nanmin(dens[i])),
+                        log["log"](N_star_j)))
+            ax[1,i].plot(extend, [f_spec(N, i) for N in extend],
+              "--", color = "blue")
+        
+        # find time where density equates N_star_j
+        N_t = N_t_fun["spec{}_{}".format(i, exp_id)]
+        try:
+            t_N_star_j = brentq(lambda t: (N_t(t) - N_star_j), 0, time[-1])
+            ax[0,i].plot(t_N_star_j, N_t(t_N_star_j), 'ro',
+              label = r"$c_{}N_{}^*$".format(j+1,j+1))
+            
+        except ValueError: # growth did not reach N_star_j in time
+            ax[0,i].plot(time[-1], N_star_j, 'ro',
+              label = r"$c_{}N_{}^*$".format(j+1,j+1))
+    ax[1,1].legend(fontsize = 14)
+    ax[1,0].legend(fontsize = 14)
     return fig, ax
+
+pars, N_t_fun, fig, ax = NFD_experiment(dens, mono_days, r_i, visualize = True, 
+                                   s = 50, f0 = f0)
+
+# xxx allow passing minimal growth rate (i.e. growth at infinite density)
+# xxx if not passed, ensure that growth declines towards inf density
+# can N_star be passed? is it handled correctly?
+# which parameters belong to which experiment

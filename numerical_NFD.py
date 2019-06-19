@@ -254,7 +254,7 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         
         # check whether we found equilibrium
         if np.amax(np.abs(info["fvec"]))>xtol:
-            pars["equilibrium found with spec{} absent".fomrat(i)] = N_pre
+            pars["equilibrium found with spec{} absent".format(i)] = N_pre
             pars["growth at found equilibrium"] = info["fvec"]
             pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
             pars["fsolve output"] = info
@@ -264,7 +264,7 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         
         # check whether real part of eigenvalues is negative
         if max(np.real(np.linalg.eigvals(jac)))>0:
-            pars["equilibrium found with spec{} absent".fomrat(i)] = N_pre
+            pars["equilibrium found with spec{} absent".format(i)] = N_pre
             pars["growth at found equilibrium"] = info["fvec"]
             pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
             pars["fsolve output"] = info
@@ -274,7 +274,7 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
             
         # check whether equilibrium is feasible, i.e. positive
         if not (np.all(N_pre>0) and np.all(np.isfinite(N_pre))):
-            pars["equilibrium found with spec{} absent".fomrat(i)] = N_pre
+            pars["equilibrium found with spec{} absent".format(i)] = N_pre
             pars["growth at found equilibrium"] = info["fvec"]
             pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
             pars["fsolve output"] = info
@@ -393,4 +393,3 @@ def switch_niche(N,sp,c=0):
     N[sp[0]] += np.nansum(c*N[sp[1:]])
     N[sp[1:]] = 0
     return N
-

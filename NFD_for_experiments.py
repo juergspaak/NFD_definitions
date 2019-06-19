@@ -20,7 +20,7 @@ except ImportError:
 class InputError(Exception):
     pass
 
-def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
+def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
                  f0 = "spline", k = 3, s = "fac=1", log = True,
                  id_exp_1 = None, visualize = True, extrapolate = "True",
                  growth_data = np.zeros((2,2,0))):
@@ -34,56 +34,70 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
     
     Parameters
     -----------
-    N_star: None or ndarray (shape = 2)
-        Monoculture equilibrium density for both species. If `None` N_star
-        will be computed automatically.
     dens: ndarray (shape = (2, r, t))
         Densities of the species over time. dens[i,r,t] is the density of
-        species i in replica r at time time[t]. The different starting
-        densities can both be combined into different replicas.
+        species `i` in replica r at time time[t]. The different starting
+        densities should both be combined into different replicas.
         `np.nan` are allowed, but will be removed or imputed (see `na.action`).
-        Alternatively (not recommended) `dens` can be a list-structure similar
-        to (2,r,t) wherein each list can have separate length.
-        If this is the case, `time` must also be a list, containing the
-        datapoint for each timepoint.
     time: array like
         Timepoints at which measurments were taken in increasing order.
         If timepoints differ for different experiment `time` must contain all 
-        timepoints. Alternatively, if `dens` is a list-structure time must have
-        the same structure.
-    na_action: "remove" or "impute" or "impute_geom" (default = "remove")
-        If "remove" all datapoints with NA will be removed. This will cause the
-        lost of the growth rate before and after the measured NA. Alternatively
-        the missing value will be imputed using a running mean ("impute") or
-        a running geometric mean ("impute_geom") on 3 datapoints.
-        Imputing NA is assuming equidistant timepoints, if this is not the case
-        imputing NA is not recommended.
+        timepoints.
     r_i: ndarray (shape = 2)
         Invasion growth rate of both species
-    f0: "Linear", "spline" or ndarray, optional (shape = 2)
+    N_star: "spline", "average" or ndarray (shape = 2)
+        Monoculture equilibrium density for both species. If "average" N_star
+        will be set to the average at the last time point. If "splin" N_star
+        will be computed using spline interpolation.
+        Default is "average".
+    na_action: "remove" or "impute"(default = "remove")
+        If "remove" all datapoints with NA will be removed. This will cause the
+        loss of the growth rate before and after the measured NA.
+        Alternatively ("impute"), the missing value will be imputed using a
+        running mean on 3 datapoints. Imputing NA is assuming equidistant
+        timepoints, if this is not the case imputing NA is not recommended.
+    f0: "linear", "perc=x", "spline" or ndarray (shape = 2), default = "linear"
         Way to compute initial growth rate ``f0``. "Spline" will use the spline
         interpolation. "Linear" will assume constant growth between the first
-        two data points. Alternatively ``f0`` can be passed directly.
+        two data points. "perc=x" will set f0 to the x percentile of the
+        measured per-capita growth rates of said species.
+        Alternatively ``f0`` can be passed directly.
     k : int or array of ints, optional, default = 3
         Degree of the smoothing spline.  Must be <= 5. If an array is passed
-        the degree belongs to each experiment seperately in the following way
-        [exp_1_sp_1, exp1_sp2, exp2_sp1, exp2_sp2]
-    s : None, float or array of floats, optional
+        the degree belongs to each species seperately in the following way
+        [k_sp_1, k_sp2]
+    s : None, float or "fac=x", where x is a float, or a list of those
         Positive smoothing factor used to choose the number of knots. Number
         of knots will be increased until the smoothing condition is satisfied:
     
             sum((w[i] * (y[i]-spl(x[i])))**2, axis=0) <= s
-    
-        If None (default), ``s = len(w)`` which should be a good value if
-        ``1/w[i]`` is an estimate of the standard deviation of ``y[i]``.
+        
+        Where y is the per_capita growth rate and x is the density.
         If 0, spline will interpolate through all data points.
-        If an array is passed the value belongs to each experiment seperately
-        in the following way: [exp_1_sp_1, exp1_sp2, exp2_sp1, exp2_sp2]
+        If None (default), ``s = len(y)`` which should be a good value if
+        ``1`` is an estimate of the standard deviation of ``y[i]``.
+        If "fac=x" then s=x*var, where var is the standard deviation of the
+        per capita growth rates. Default is "fac=1"        
+        If a list is passed the value belongs to each species seperately.
     log: boolean, optinal, default = True
         If True fitting and visualizing is done one log transformed data
+    extrapolate: boolean, default = True
+        If True, data above the measured densities will be extrapolated,
+        otherwise they are set to the boundary values
+    id_exp_1: boolean array or None
+        Identity of replicas with low starting densities. If None, 
+        the first half ot the replicas is assumed to be with low starting
+        density.
     visualize: boolean, optional, default = True
         If true, plot a graph of the growth rates and the percapita growth
         rates of both species. `fig`and `ax` of this figure are returned
+    growth_data: array of shape (2,2,n)
+        Growth rates which are known. growth_data[i,0] is the density of species
+        i and growth_data[i,1] is the per capita growth rate at said densities.
+        Can be used to pass growth rates at to high (or low densities).
+        e.g. growth_data = [[[1e20],[-dil]],
+                            [[1e20],[-dil]]]
+        Where dil is the dilution rate of the system. 
         
     Returns
     -------
@@ -106,6 +120,13 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
         Fitness difference
     ``f0``: ndarray (shape = n_spec)
         monoculture growth rate, f(0)
+    N_t_fun: dictionary with callables
+        keys are ["spec0_low", "spec1_low", "spec0_high", "spec1_high"]
+        
+        N_t_fun[key](t) is the fitted density of species i in the experiment 
+        low respectively high. t must be a non-negative float or array
+    N_t_data: array
+        N_t_fun evaluated at timepoints time    
     fig: Matplotlib figure
         only returned if ``visualize`` is True
     ax: Matplotlib axes
@@ -115,14 +136,7 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI:
     """
-    '''
-    # check input experiment one must be increasing
-    if (dens_exp1[:,:-1]>dens_exp1[:,1:]).any():
-        warn("Densities in the first experiment are not strictly"
-                         "increasing")
-    if (dens_exp2[:,:-1]<dens_exp2[:,1:]).any():
-        warn("Densities in the second experiment are not strictly"
-                         "decreasing")'''  
+    # convert input parameters
     input_par, log, id_exp_1 = __input_check_exp__(k , s, f0, N_star,
                     id_exp_1, log, extrapolate, dens, time, growth_data)         
     
@@ -141,28 +155,35 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
     # per capita growth rate for both species in monoculture
     f, f_spec = per_capita_growth(dens, time, input_par, log)
 
-    if N_star is None:
+    if N_star == "spline":
         N_star = log["nanmean"](dens[...,-1], axis = (1)) # starting guess
-        # compute N_star
+        # compute N_star using the spline interpolations
         for i in range(2):
             N_star[i] = fsolve(f_spec, N_star[i], args = (i,))
+    else:
+        N_star = input_par["N_star"]
+            
+    # set starting guess for c
     c = np.ones((2,2))
-    c[[1,0],[0,1]] = [N_star[0]/N_star[1], N_star[1]/N_star[0]]    
+    c[[1,0],[0,1]] = [N_star[0]/N_star[1], N_star[1]/N_star[0]] 
+    
     # compute the ND, FD etc. parameters
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
             "r_i": r_i, "f": f, "c": c}
     pars = NFD_model(f, pars = pars, experimental = True)
 
+    # densities over time
     N_t_fun, N_t_data = dens_over_time(f_spec, time, dens, id_exp_1)
     if visualize: # visualize results if necessary
         fig, ax = visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec)
-        return pars, N_t_fun, fig, ax
+        return pars, N_t_fun, N_t_data, fig, ax
     
-    return pars
+    return pars, N_t_fun, N_t_data
 
 def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate, 
                         dens, time, growth_data):
     # convert input parameters to right format if necessary
+    
     input_par = {"k":k, "s":s}
     for key in input_par.keys():
         if type(input_par[key]) != list:
@@ -170,7 +191,7 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
             
     input_par["extrapolate"] = extrapolate   
  
-    if id_exp_1 is None:
+    if id_exp_1 is None: # assume first half is exp1, i.e. low starting density
         id_exp_1 = np.full(dens.shape[1], False)
         id_exp_1[:len(id_exp_1)//2] = True
         
@@ -185,26 +206,28 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
         log = {"log": lambda x: x , "exp": lambda x: x, "log_space": False,
                "nanmean": np.nanmean, "mean": np.mean}
         
-    # compute data intern variance
+    # compute data intern variance, needed for computing s
     time_diff = time[1:]-time[:-1]
     per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
     input_par["var"] = np.nanmean(np.nanvar(per_cap_growth, axis = 1),
              axis = -1)
     
     # add predefined N_star value to growth_data if needed
-    if not (N_star is None):
+    if N_star == "average":
+        N_star = log["nanmean"](dens[...,-1], axis = (1))
+    if N_star != "spline":
         # per cap grwth is 0 at equilibrium
         growth_append = np.array([N_star, [0,0]]).T.reshape(2,2,1)
         growth_data = np.append(growth_data, growth_append, axis = -1)
+    input_par["N_star"] = N_star
             
     
-    
+    # set the values for f0
     if (type(f0) == str) and f0[:5] == "perc=":
         f0 = np.nanpercentile(per_cap_growth, float(f0[5:]), axis = (1,2))
     elif f0 == "linear":
-        f0 = np.nanmean(per_cap_growth[:,id_exp_1,0], axis = 1)
-    print(f0)    
-    if not (f0 is None):
+        f0 = np.nanmean(per_cap_growth[:,id_exp_1,0], axis = 1)    
+    if f0 != "spline": # force spline to use f0
         scal = 5.0**(-np.arange(4).reshape(-1,1))
         dens_ap = scal*np.nanmin(dens, axis = (1,2))
         gr_ap = f0*np.ones((4,2))
@@ -217,21 +240,7 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
     
 def per_capita_growth(dens, time, input_par, log):
     """interpolate the per capita growth rate of the species
-    
-    times:
-        Timepoints of measurments
-    exps:
-        Densities of the species at timepoints times
-    N_star: float
-        equilibrium density of the species
-
-    k: int
-        Order of interpolation spline
-    s: float or None
-        Smoothing factor
-    log: boolean, optinal, default = True
-        If True fitting and visualizing is done one log transformed data
-        
+           
     Returns
     -------
     f: callable
@@ -255,7 +264,7 @@ def per_capita_growth(dens, time, input_par, log):
         # below minimum, use f0
         if (N < mins[i]): 
             return dict_f["spec{}".format(i)](mins[i])
-        # above maximum, use maximal entry
+        # above maximum, use maximal entry if not extrapolate
         elif (N > maxs[i]) and not input_par["extrapolate"]: 
             return dict_f["spec{}".format(i)](maxs[i])
         else: # above maximum
@@ -281,7 +290,7 @@ def dens_to_per_capita(dens, time, input_par, log, i):
     time_diff = time[1:]-time[:-1]
     per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
 
-    # use middle point for growth rate, similar in plotting function
+    # use middle point for growth rate
     dens_mid = log["nanmean"]([dens[...,1:], dens[...,:-1]], axis = 0)
     
     # remove nan's
@@ -291,8 +300,6 @@ def dens_to_per_capita(dens, time, input_par, log, i):
     w = np.ones(len(dens_finite)) # weighting for univariate spline
     
     # add predefined growth data
-    print("here", input_par["growth_data"][i,0])
-    print(input_par["growth_data"])
     dens_finite = np.append(dens_finite, input_par["growth_data"][i,0])
     per_cap_growth = np.append(per_cap_growth, input_par["growth_data"][i,1])
     w = np.append(w, np.full(len(dens_finite)-len(w),input_par["var"][i]*1e10))
@@ -337,6 +344,7 @@ def dens_over_time(f_spec, time, dens, id_exp_1):
                 N_start = np.nanmean(dens[i, id_exp_1, 0])
             else:
                 N_start = np.nanmean(dens[i, ~id_exp_1, 0])
+            # solve differential equation given by per-capita growth rates
             N_t_fun[key] = lambda time, i = i, N_start = N_start: odeint(
                     lambda N,t: N*f_spec(N,i), N_start, np.append(0,time))[1:]
             N_t_data[key] = N_t_fun[key](time)
@@ -379,9 +387,11 @@ def visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec):
     # plot the per capita growth rate
     time_diff = time[1:]-time[:-1]
     per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
+    dens_mid = log["nanmean"]([dens[...,1:], dens[...,:-1]], axis = 0)
     for i in range(2):
         j = [1,0][i] 
-        ax[1,i].plot(dens[i, :, :-1], per_cap_growth[i], 'o', color = col[i])
+        ax[1,i].plot(dens_mid[i, :, :-1], per_cap_growth[i],
+          'o', color = col[i])
         dens_range = log["exp"](np.linspace(
                 *np.nanpercentile(log["log"](dens[i]),[0,100]), 100))
         ax[1,i].plot(dens_range, [f_spec(de, i) for de in dens_range],
@@ -432,9 +442,10 @@ def visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec):
               label = r"$c_{}N_{}^*$".format(j+1,j+1))
     ax[1,1].legend(fontsize = 14)
     ax[1,0].legend(fontsize = 14)
+    ax[0,0].set_ylim(np.nanpercentile(dens, [0,100])*[0.8,1.2])
 
     return fig, ax
 fmin =  np.log(0.9)/3.5
-pars, N_t_fun, fig, ax = NFD_experiment(dens, mono_days, r_i, visualize = True, 
-                                   s = "fac=2", f0 = "perc=100", N_star = [5e5, 5e5],
+pars, N_t_fun,N_t_data, fig, ax = NFD_experiment(dens, mono_days, r_i, visualize = True, 
+                                   s = "fac=2",
                                    log = True)

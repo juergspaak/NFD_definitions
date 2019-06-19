@@ -67,14 +67,13 @@ BS5_inv_err = np.nanstd(BS4_dens[BS5_id], axis = 0)
 r_i = np.array([np.log(BS4_dens[BS5_id,19]/BS4_dens[BS5_id,17]),
                 np.log(BS5_dens[BS4_id,19]/BS5_dens[BS4_id,17])])/6
 r_i = np.nanmean(r_i, axis = -1)
-data_growth = np.arange(0,16)
-data_decline = np.arange(0,16)
-N_star = (growth[:,data_growth[-1]] + decline[:,data_decline[-1]])/2
 
-# compute NFD values
-pars, N_t, fig, ax = NFD_experiment(N_star, time_growth[data_growth], 
-            growth[:,data_growth], time_decline[data_decline],
-            decline[:,data_decline], r_i)
+dens = np.array([BS4_dens[BS4_id, 2:inv_id], BS5_dens[~BS4_id, 2:inv_id]])
+
+pars, N_t, N_t_data, fig, ax = NFD_experiment(dens, time[2:inv_id], r_i, 
+                                              f0 = "linear")
+N_star = pars["N_star"][[1,0],[0,1]]
+
 
 fig.savefig("NFD_computation_experiment.pdf")
 
@@ -99,14 +98,14 @@ ax[1].errorbar(time_p, decline[1], decline_err[1], fmt = "o", color = "grey"
 
 # plot the fitted data
 time_f = np.linspace(time_growth[0],time[inv_id], 100)
-ax[0].plot(time_f-time_growth[0], [N_t["exp1_spec0"](t) for t in time_f],
+ax[0].plot(time_f-time_growth[0], N_t["spec0_low"](time_f),
            color = "black", )
-ax[0].plot(time_f-time_growth[0], [N_t["exp2_spec0"](t) for t in time_f], '--',
+ax[0].plot(time_f-time_growth[0], N_t["spec0_high"](time_f), '--',
            color = "black")
 
-ax[1].plot(time_f-time_growth[0], [N_t["exp1_spec1"](t) for t in time_f],
+ax[1].plot(time_f-time_growth[0], N_t["spec1_low"](time_f),
            color = "black")
-ax[1].plot(time_f-time_growth[0], [N_t["exp2_spec1"](t) for t in time_f], '--',
+ax[1].plot(time_f-time_growth[0], N_t["spec1_high"](time_f), '--',
            color = "black")
 
 
@@ -209,15 +208,15 @@ ax_arr1.text(50, 16.1, r"$f_1(0,N_2^*)$",  fontsize = fs-2,
 
 # no_niche growth rate
 t = 37
-arrow([t - time_growth[0],N_t["exp1_spec0"](t)],
-    [t + 7 - time_growth[0],N_t["exp1_spec0"](t + 7)],
+arrow([t - time_growth[0],N_t["spec0_low"](t)],
+    [t + 7 - time_growth[0],N_t["spec0_low"](t + 7)],
     ax_arr0, 0.4, [0,0.2],
     arrowprops = dict(facecolor='white', ls = 'dashed'))
 ax_arr0.text(t-15,19.4, r"$f_1(c_2N_2^*,0)$",  fontsize = fs-2,
             bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
 t = 44
-arrow([t - time_growth[0],N_t["exp2_spec1"](t)],
-    [t + 7 - time_growth[0],N_t["exp2_spec1"](t + 7)],
+arrow([t - time_growth[0],N_t["spec1_high"](t)],
+    [t + 7 - time_growth[0],N_t["spec1_high"](t + 7)],
     ax_arr1, 0, [0,-0.2],
     arrowprops = dict(facecolor='white', ls = 'dashed'))
 ax_arr1.text(t-15,19.6, r"$f_2(c_1N_1^*,0)$",  fontsize = fs-2,

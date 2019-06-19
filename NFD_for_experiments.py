@@ -12,10 +12,10 @@ from scipy.optimize import brentq, fsolve
 from scipy.integrate import odeint
 
 try:
-    from numerical_NFD import NFD_model
+    from numerical_NFD import NFD_model, InputError
 except ImportError:
     # in case this code is used in a submodule, import from the submodule
-    from nfd_definitions.numerical_NFD import NFD_model
+    from nfd_definitions.numerical_NFD import NFD_model, InputError
 
 class InputError(Exception):
     pass
@@ -137,11 +137,10 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
     DOI:
     """
     # convert input parameters
-    input_par, log, id_exp_1 = __input_check_exp__(k , s, f0, N_star,
-                    id_exp_1, log, extrapolate, dens, time, growth_data)         
-    
     dens = np.array(dens)
     time = np.array(time)
+    input_par, log, id_exp_1 = __input_check_exp__(k , s, f0, N_star,
+                    id_exp_1, log, extrapolate, dens, time, growth_data) 
         
     # impute na if necessary
     if na_action == "impute": # compute mean
@@ -170,8 +169,16 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
     # compute the ND, FD etc. parameters
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
             "r_i": r_i, "f": f, "c": c}
-    pars = NFD_model(f, pars = pars, experimental = True)
-
+    try:
+        pars = NFD_model(f, pars = pars, experimental = True)
+    except InputError:
+        # densities over time
+        N_t_fun, N_t_data = dens_over_time(f_spec, time, dens, id_exp_1)
+        fig, ax = visualize_fun(time, dens, pars, N_t_fun, 
+                                    id_exp_1, log, f_spec)
+        raise InputError("Fitting spline to data did not result in" 
+                " reasonable results, please check input (see plots)")
+        
     # densities over time
     N_t_fun, N_t_data = dens_over_time(f_spec, time, dens, id_exp_1)
     if visualize: # visualize results if necessary
@@ -228,9 +235,9 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
     elif f0 == "linear":
         f0 = np.nanmean(per_cap_growth[:,id_exp_1,0], axis = 1)    
     if f0 != "spline": # force spline to use f0
-        scal = 5.0**(-np.arange(4).reshape(-1,1))
+        scal = 2.0**(-np.arange(2).reshape(-1,1))
         dens_ap = scal*np.nanmin(dens, axis = (1,2))
-        gr_ap = f0*np.ones((4,2))
+        gr_ap = f0*np.ones((len(scal),2))
         growth_append = [[dens_ap[:,0], gr_ap[:,0]],[dens_ap[:,1], gr_ap[:,1]]]
         growth_data = np.append(growth_data, growth_append, axis = -1)        
         
@@ -344,10 +351,12 @@ def dens_over_time(f_spec, time, dens, id_exp_1):
                 N_start = np.nanmean(dens[i, id_exp_1, 0])
             else:
                 N_start = np.nanmean(dens[i, ~id_exp_1, 0])
+            print(N_start, key)
             # solve differential equation given by per-capita growth rates
-            N_t_fun[key] = lambda time, i = i, N_start = N_start: odeint(
-                    lambda N,t: N*f_spec(N,i), N_start, np.append(0,time))[1:]
-            N_t_data[key] = N_t_fun[key](time)
+            N_t_fun[key] = lambda t, i = i, N_start = N_start: odeint(
+                    lambda N,t: N*f_spec(N,i), N_start,
+                    np.append(time[0],t))[1:]
+            N_t_data[key] = N_t_fun[key](time)[:,0]
     return N_t_fun, N_t_data
     
 def visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec):
@@ -445,7 +454,3 @@ def visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec):
     ax[0,0].set_ylim(np.nanpercentile(dens, [0,100])*[0.8,1.2])
 
     return fig, ax
-fmin =  np.log(0.9)/3.5
-pars, N_t_fun,N_t_data, fig, ax = NFD_experiment(dens, mono_days, r_i, visualize = True, 
-                                   s = "fac=2",
-                                   log = True)

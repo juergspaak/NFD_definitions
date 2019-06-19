@@ -8,7 +8,7 @@ from scipy.optimize import brentq, fsolve
 from warnings import warn
 
 def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
-             experimental = False, from_R = False, xtol = 1e-10):
+             experimental = False, from_R = False, xtol = 1e-5):
     """Compute the ND and FD for a differential equation f
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -106,14 +106,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         if not ("r_i" in pars.keys()):
             pars["r_i"] = np.array([f(pars["N_star"][i], *args)[i] 
                         for i in range(n_spec)])
-        def save_f(N):
-            # allow passing infinite species densities to per capita growthrate
-            if np.isinf(N).any():
-                return np.full(N.shape, -np.inf)
-            else:
-                return f(N, *args)
-        pars["f"] = save_f
-    else:
+    if not experimental:
         # obtain equilibria densities and invasion growth rates    
         pars = preconditioner(f, args,n_spec, pars, xtol)                  
     # list of all species
@@ -243,11 +236,11 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         # Check stability of equilibrium
         # Jacobian of system at equilibrium
         r = np.zeros((n_spec-1, n_spec-1))
-        r[np.triu_indices(n_spec-1)] = info["r"]
-        jac = -np.diag(N_pre).dot(info["fjac"]).dot(r)
-
+        r[np.triu_indices(n_spec-1)] = info["r"].copy()
+        jac = np.diag(N_pre).dot(info["fjac"].T).dot(r)
+        
         # check whether real part of eigenvalues is negative
-        if max(np.real(np.linalg.eigvals(jac)))<0:
+        if max(np.real(np.linalg.eigvals(jac)))>0:
             raise InputError("Found equilibrium is not stable, "
                         + "with species {} absent.".format(i)
                         + " Please provide manually via the `pars` argument")
@@ -314,6 +307,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
         return a, 1/a
     fac = 2**direction
     if not np.isfinite(direction):
+        # xxx give better feedback, at what positions are nonfin values return
         raise InputError("function `f` seems to be returning nonfinite values")
     b = a*fac
     # change searching range to find c with changed size of NO
@@ -346,13 +340,16 @@ def NO_fun(pars,c, sp):
     # Compute NO for specis sp and conversion factor c
     f0 = pars["f"](switch_niche(pars["N_star"][sp[0]],sp))[sp[0]]
     fc = pars["f"](switch_niche(pars["N_star"][sp[0]],sp,c))[sp[0]]
-    
+
+    if f0 == fc:
+        return np.sign(f0-pars["r_i"])[sp[0]]*np.inf
     return (f0-pars["r_i"][sp[0]])/(f0-fc)
     
 def FD_fun(pars, c, sp):
     # compute the FD for species sp and conversion factor c
     f0 = pars["f"](switch_niche(pars["N_star"][sp[0]],sp))[sp[0]]
     fc = pars["f"](switch_niche(pars["N_star"][sp[0]],sp,c))[sp[0]]
+    
     return fc/f0
     
 def switch_niche(N,sp,c=0):

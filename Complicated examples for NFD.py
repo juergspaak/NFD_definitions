@@ -50,6 +50,8 @@ percapita_mono = np.array([full_example(N_mono, coef)[:,0],
 # plot the per capita growth rate in monoculture
 plt.figure()
 plt.plot(N_mono[:,0],percapita_mono.T, label = "species")
+plt.plot(x[0,-1], y[0,-1], 'ro', label = "equilibria species 1")
+plt.plot(roots[0], 0, 'ro', label = "equilibria")
 plt.grid()
 plt.axis([0,end,-2,3])
 plt.legend(["species 1", "species 2"])
@@ -57,7 +59,7 @@ plt.xlabel("Density (N)", fontsize = 14)
 plt.ylabel(r"per capita growth rate $f_i(N_i,0)$", fontsize = 14)
 plt.title("Per capita growth rate in monoculture")
 plt.show()
-print("Note that species 1 has two stable monoculture equilibria.")
+print("Note that species 1 has two stable monoculture equilibria (red dots).")
 print("Species 2 has a local minima (not equilibrium) at 1.",
       "The algorithm can't find equilibrium density in this case.",
       "\nWe have to provide a beter starting estimate for",

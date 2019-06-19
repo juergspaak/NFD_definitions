@@ -60,10 +60,11 @@ A = np.random.uniform(0,1,(n_spec,n_spec)) # interaction matrix
 # to ensure coexistence increase diagonal values
 np.fill_diagonal(A,np.random.uniform(n_spec,n_spec+1,n_spec)) 
 mu = np.random.uniform(1,2,n_spec) # intrinsic growth rate
-def test_f(N):
+def test_f(N, mu, A):
     return mu - np.dot(A,N)
 
-pars = NFD_model(test_f, n_spec)
+# how to pass additional arguments to NFD_model
+pars = NFD_model(test_f, n_spec, args = (mu, A))
 ND_m, NO_m, FD_m, c_m = pars["ND"], pars["NO"], pars["FD"], pars["c"]
 
 NO_check_m = np.empty(n_spec)

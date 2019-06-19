@@ -21,8 +21,9 @@ class InputError(Exception):
     pass
 
 def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
-                 f0 = "spline", k = 3, s = None, log = True,
-                 id_exp_1 = None, visualize = True, extrapolate = "True"):
+                 f0 = "spline", k = 3, s = "fac=1", log = True,
+                 id_exp_1 = None, visualize = True, extrapolate = "True",
+                 growth_data = np.zeros((2,2,0))):
     """Compute the ND and FD for two-species experimental data
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -123,7 +124,7 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
         warn("Densities in the second experiment are not strictly"
                          "decreasing")'''  
     input_par, log, id_exp_1 = __input_check_exp__(k , s, f0, N_star,
-                    id_exp_1, log, extrapolate, dens)         
+                    id_exp_1, log, extrapolate, dens, time, growth_data)         
     
     dens = np.array(dens)
     time = np.array(time)
@@ -151,7 +152,7 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
             "r_i": r_i, "f": f, "c": c}
     pars = NFD_model(f, pars = pars, experimental = True)
-    # xxx compute R^2 for both per_capita growth rate and for densities over time
+
     N_t_fun, N_t_data = dens_over_time(f_spec, time, dens, id_exp_1)
     if visualize: # visualize results if necessary
         fig, ax = visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec)
@@ -159,16 +160,15 @@ def NFD_experiment(dens, time, r_i, N_star = None, na_action = "remove",
     
     return pars
 
-def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate, dens):
+def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate, 
+                        dens, time, growth_data):
     # convert input parameters to right format if necessary
-    input_par = {"k":k, "s":s, "f0": f0, "N_star": N_star}
+    input_par = {"k":k, "s":s}
     for key in input_par.keys():
-        try:
-            input_par[key][0]
-        except TypeError:
+        if type(input_par[key]) != list:
             input_par[key] = 2*[input_par[key]]
             
-    input_par["extrapolate"] = extrapolate
+    input_par["extrapolate"] = extrapolate   
  
     if id_exp_1 is None:
         id_exp_1 = np.full(dens.shape[1], False)
@@ -185,8 +185,34 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate, dens):
         log = {"log": lambda x: x , "exp": lambda x: x, "log_space": False,
                "nanmean": np.nanmean, "mean": np.mean}
         
+    # compute data intern variance
+    time_diff = time[1:]-time[:-1]
+    per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
+    input_par["var"] = np.nanmean(np.nanvar(per_cap_growth, axis = 1),
+             axis = -1)
+    
+    # add predefined N_star value to growth_data if needed
+    if not (N_star is None):
+        # per cap grwth is 0 at equilibrium
+        growth_append = np.array([N_star, [0,0]]).T.reshape(2,2,1)
+        growth_data = np.append(growth_data, growth_append, axis = -1)
+            
+    
+    
+    if (type(f0) == str) and f0[:5] == "perc=":
+        f0 = np.nanpercentile(per_cap_growth, float(f0[5:]), axis = (1,2))
+    elif f0 == "linear":
+        f0 = np.nanmean(per_cap_growth[:,id_exp_1,0], axis = 1)
+    print(f0)    
+    if not (f0 is None):
+        scal = 5.0**(-np.arange(4).reshape(-1,1))
+        dens_ap = scal*np.nanmin(dens, axis = (1,2))
+        gr_ap = f0*np.ones((4,2))
+        growth_append = [[dens_ap[:,0], gr_ap[:,0]],[dens_ap[:,1], gr_ap[:,1]]]
+        growth_data = np.append(growth_data, growth_append, axis = -1)        
+        
+    input_par["growth_data"] = growth_data
     return input_par, log, id_exp_1
-    # xxx provide useful s if s is passed as None
     
     
 def per_capita_growth(dens, time, input_par, log):
@@ -198,8 +224,7 @@ def per_capita_growth(dens, time, input_par, log):
         Densities of the species at timepoints times
     N_star: float
         equilibrium density of the species
-    f0: float
-        monoculture growth rate
+
     k: int
         Order of interpolation spline
     s: float or None
@@ -219,20 +244,7 @@ def per_capita_growth(dens, time, input_par, log):
     dict_f = {} # contains per capita growth rate for each specie in monocul.
     for i in range(2):
         f_N = dens_to_per_capita(dens[i], time, input_par, log, i)
-        dict_f["spec{}".format(i)] = f_N
-    
-    """
-    # monoculture growth rate, assumes that growth rate is constant at
-    # the beginning
-    # xxx f0 has already been passed before?
-    if f0 == "spline":
-        f0 = [dict_f["spec{}".format(i)](np.nanmin(dens[i])) for i in [0,1]]
-        print("f0", f0)
-    elif f0 == "linear":
-        f0 = np.log(exps[1][:,1]/exps[1][:,0])/(times[1][1]-times[1][0])
-    # other wise f0 is assumed to be an array of shape (2,)
-    """
-            
+        dict_f["spec{}".format(i)] = f_N     
     
     # per capita growth rate for each species, using different cases
     mins = np.nanmin(dens, axis = (1,2))
@@ -278,36 +290,40 @@ def dens_to_per_capita(dens, time, input_par, log, i):
     per_cap_growth = per_cap_growth[finite]
     w = np.ones(len(dens_finite)) # weighting for univariate spline
     
-    # add predefined N_star value if needed
-    if not (input_par["N_star"][i] is None):
-        dens_finite = np.append(dens_finite, input_par["N_star"][i])
-        per_cap_growth = np.append(per_cap_growth, 0)
-        w = np.append(w,input_par["s"][i]*1e10)
-    
-    # remove double values (can occur from imputing na)
-    unique = dens_finite[1:]>dens_finite[:-1]
-    unique = np.append([True], unique)
-    dens_finite = dens_finite[unique]
-    per_cap_growth = per_cap_growth[unique]
-    w = w[unique]
-    
+    # add predefined growth data
+    print("here", input_par["growth_data"][i,0])
+    print(input_par["growth_data"])
+    dens_finite = np.append(dens_finite, input_par["growth_data"][i,0])
+    per_cap_growth = np.append(per_cap_growth, input_par["growth_data"][i,1])
+    w = np.append(w, np.full(len(dens_finite)-len(w),input_par["var"][i]*1e10))
     # sort for increasing dens, needed for spline
     ind = np.argsort(dens_finite)
     dens_finite = dens_finite[ind]
     per_cap_growth = per_cap_growth[ind]
     w = w[ind]
     
-    # is f0 predefined?
-    if not (input_par["f0"][i] is None):
-        per_cap_growth[0] = input_par["f0"][i]
-        w[0] = input_par["s"][i]*1e10 # to force spline through first point
+    # remove double values (can occur from imputing na)
+    unique = dens_finite[1:] > dens_finite[:-1]
+    unique = np.append([True], unique)
+    dens_finite = dens_finite[unique]
+    per_cap_growth = per_cap_growth[unique]
+    w = w[unique]
     
+    # compute smoothingfactor s
+    if type(input_par["s"][i]) == float:
+        s = input_par["s"][i]
+    elif ((type(input_par["s"][i]) == str) and 
+                (input_par["s"][i][:4] == "fac=")):
+        s = float(input_par["s"][i][4:])*input_par["var"][i]*len(w)
+    else:
+        s = None
     dNdt = uni_sp(log["log"](dens_finite), per_cap_growth,
-                  k = input_par["k"][i], s = input_par["s"][i], w = w)
+                  k = input_par["k"][i], s = s, w = w)
     
     def per_capita(N):
         # compute the percapita growth rate of the species        
         return dNdt(log["log"](N))
+    
     return per_capita
 
 def dens_over_time(f_spec, time, dens, id_exp_1):
@@ -416,12 +432,9 @@ def visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec):
               label = r"$c_{}N_{}^*$".format(j+1,j+1))
     ax[1,1].legend(fontsize = 14)
     ax[1,0].legend(fontsize = 14)
+
     return fig, ax
-
+fmin =  np.log(0.9)/3.5
 pars, N_t_fun, fig, ax = NFD_experiment(dens, mono_days, r_i, visualize = True, 
-                                   s = 50, f0 = f0)
-
-# xxx allow passing minimal growth rate (i.e. growth at infinite density)
-# xxx if not passed, ensure that growth declines towards inf density
-# can N_star be passed? is it handled correctly?
-# which parameters belong to which experiment
+                                   s = "fac=2", f0 = "perc=100", N_star = [5e5, 5e5],
+                                   log = True)

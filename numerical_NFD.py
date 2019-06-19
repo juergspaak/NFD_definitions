@@ -70,13 +70,35 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         Fitness difference
     ``f0``: ndarray (shape = n_spec)
         no-competition growth rate, f(0)
+    
+    Raises:
+        InputError:
+            Is raised if system cannot automatically solve equations.
+            Starting estimates for N_star and c should be passed.
+    
+    Examples:
+        See "Example,compute NFD.py" and "Complicated examples for NFD.py"
+        for applications for models
+        See "Exp_plots.py" for application to experimental data
+    
+    Debugging:
+        If InputError is raised the problem causing information is saved in
+        pars.
+        To access it rerun the code in the following way (or similar)
+            
+        pars = {}
+        pars = NFD_model(f, pars = pars)
+        
+        pars will then contain additional information
+    
+    For simplified debugging:
+    
         
     Literature:
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI: 10.1101/482703
     """
     if from_R:
-        print(args)
         if n_spec-int(n_spec) == 0:
             n_spec = int(n_spec)
         else:
@@ -86,7 +108,6 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         def f(N, *args):
             # translate dataframes, matrices etc to np.array
             return np.array(fold(N, *args)).reshape(-1)
-        print(pars)
         
         if not(pars is None):
             try:
@@ -96,7 +117,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
                 raise InputError("Argument ``pars`` must be a dictionary or a"
                     "labeled list. e.g. ``pars = list(N_star = N_star)")
     # check input on correctness
-    monotone_f = __input_check__(n_spec, f, args, monotone_f)
+    monotone_f = __input_check__(n_spec, f, args, monotone_f, pars)
     
     if experimental:
         if not ("c" in pars.keys()):
@@ -139,7 +160,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     pars["c"] = c
     return pars
   
-def __input_check__(n_spec, f, args, monotone_f):
+def __input_check__(n_spec, f, args, monotone_f, pars):
     # check input on (semantical) correctness
     if not isinstance(n_spec, int):
         raise InputError("Number of species (`n_spec`) must be an integer")
@@ -148,6 +169,8 @@ def __input_check__(n_spec, f, args, monotone_f):
     try:
         f0 = f(np.zeros(n_spec), *args)
         if f0.shape != (n_spec,):
+            pars["fucntion_call"] = "f(0)"
+            pars["return_value"] = f0
             raise InputError("`f` must return an array of length `n_spec`")   
     except TypeError:
         print("function call of `f` did not work properly")
@@ -221,11 +244,7 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
                             pars["N_star"][i,ind], full_output = True,
                             xtol = xtol)
         
-        # check whether we found equilibrium
-        if np.amax(np.abs(info["fvec"]))>xtol:
-            raise InputError("Not able to find resident equilibrium density, "
-                        + "with species {} absent.".format(i)
-                        + " Please provide manually via the `pars` argument")
+
         
         # Check stability of equilibrium
         # Jacobian of system at equilibrium
@@ -233,14 +252,32 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         r[np.triu_indices(n_spec-1)] = info["r"].copy()
         jac = np.diag(N_pre).dot(info["fjac"].T).dot(r)
         
+        # check whether we found equilibrium
+        if np.amax(np.abs(info["fvec"]))>xtol:
+            pars["equilibrium found with spec{} absent".fomrat(i)] = N_pre
+            pars["growth at found equilibrium"] = info["fvec"]
+            pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            pars["fsolve output"] = info
+            raise InputError("Not able to find resident equilibrium density, "
+                        + "with species {} absent.".format(i)
+                        + " Please provide manually via the `pars` argument")
+        
         # check whether real part of eigenvalues is negative
         if max(np.real(np.linalg.eigvals(jac)))>0:
+            pars["equilibrium found with spec{} absent".fomrat(i)] = N_pre
+            pars["growth at found equilibrium"] = info["fvec"]
+            pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            pars["fsolve output"] = info
             raise InputError("Found equilibrium is not stable, "
                         + "with species {} absent.".format(i)
                         + " Please provide manually via the `pars` argument")
             
         # check whether equilibrium is feasible, i.e. positive
         if not (np.all(N_pre>0) and np.all(np.isfinite(N_pre))):
+            pars["equilibrium found with spec{} absent".fomrat(i)] = N_pre
+            pars["growth at found equilibrium"] = info["fvec"]
+            pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            pars["fsolve output"] = info
             raise InputError("Found equilibrium is not feasible (i.e. N*>0), "
                         + "with species {} absent.".format(i)
                         + " Please provide manually via the `pars` argument")
@@ -285,6 +322,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     if not monotone_f: 
         c = fsolve(inter_fun,pars["c"][sp[0],sp[1]],xtol = xtol)[0]
         if np.abs(inter_fun(c))>xtol:
+            pars["c found by fsolve"] = c
             raise ValueError("Not able to find c_{}^{}.".format(*sp) +
                 "Please pass a better guess for c_i^j via the `pars` argument")
         return c, 1/c
@@ -301,7 +339,10 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
         return a, 1/a
     fac = 2**direction
     if not np.isfinite(direction):
-        # xxx give better feedback, at what positions are nonfin values return
+        pars["function inputs"] = [switch_niche(pars["N_star"][es[0]],es,c)
+                for c in [0,a, 1/a] for es in [sp, sp[::-1]]]
+        pars["function outputs"] = [pars["f"](inp) for 
+             inp in pars["function inputs"]]
         raise InputError("function `f` seems to be returning nonfinite values")
     b = a*fac
     # change searching range to find c with changed size of NO

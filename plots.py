@@ -13,13 +13,14 @@ mpl.rcParams['mathtext.rm'] = 'serif'
 plt.rcParams["font.family"] = 'Times New Roman'
 ###############################################################################
 # Example of Mac Arthur resource model with NO
-fig, ax = plt.subplots(1,2, figsize = (10,3.5))
+fig, ax = plt.subplots(1,2, figsize = (10,3.5), sharey = True)
 bars = np.array([0.1,0.2,0.3,0.4,0.5,0.4,0.3,0.2,0.1])
 x = np.arange(len(bars))
 
 # barplots of dependence on limiting factor
+ax[0].set_title("A")
 ax[0].bar(x,bars, color = "white", alpha = 1, edgecolor = "black")
-ax[0].bar(x+4,bars, color = "black", alpha = 1)
+ax[0].bar(x+4,bars, color = "grey", alpha = 1, edgecolor = "black")
 ax[0].bar(x,bars, color = "white", alpha = 0.5, edgecolor = "black")
 
 fs = 14
@@ -35,26 +36,17 @@ ax[0].set_ylabel("Consumption $u_{il}$\n(Dependence on limiting factor)"
 
 ax[0].axis([-1,13,None,0.6])
 
+# multispecies community
+# barplots of dependence on limiting factor
+ax[1].set_title("B")
+ax[1].bar(x,bars, color = "white", alpha = 1, edgecolor = "black")
+ax[1].bar(x+12,bars, color = "black", alpha = 1, edgecolor = "black")
+ax[1].bar(x+4,bars, color = "lightgrey", alpha = 1, edgecolor = "black")
+ax[1].bar(x,bars, color = "white", alpha = 0.5, edgecolor = "black")
+ax[1].bar(x+12,bars, color = "black", alpha = 0.5, edgecolor = "black")
 
-ax[1].text(0.5,2/3, r"$\frac{1}{N_i}\frac{dN_i}{dt}=$"
-                +r"$\sum_{l=1}^mu_{il}R_l-m_i$",
-                        ha= "center", fontsize = 24)
-
-ax[1].text(0.5,1/3, r"$\frac{1}{R_l}\frac{dR_l}{dt}=$"+
-            r"$r_l\left(1-\frac{R_l}{K_l}\right)-\sum_{i=1}^nu_{il}N_i$",
-                        ha= "center", fontsize = 24)
-
-"""t =("Figure: Dependence of two species \n"
-    "(white and black) on limiting factors.\n"
-    "In the MacArthur resource model the\n"
-    "limiting factors are the resources $R_l$\n"
-    "and the dependence is the consuption $u_{il}.$")
-
-from matplotlib.font_manager import FontProperties
-font = FontProperties()
-font.set_weight('bold')
-ax[1].text(-0.1,0.5,t,va = "center", fontsize = 14, fontproperties = font)"""
-ax[1].axis("off")
+ax[1].set_xlabel("Resource $R_l$\n(Limiting factor)", fontsize = fs)
+ax[1].set_xticks([])
 fig.savefig("Figure, Limiting factors.pdf")
 
 ###############################################################################

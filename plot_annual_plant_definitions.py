@@ -120,13 +120,13 @@ for l in range(rep):
         c[l] = brentq(NO_equate,0,1e3, args = (denom[:,l]))
     except ValueError:
         c[l] = brentq(NO_equate,0,1e10, args = (denom[:,l]))
-key = "Spaak & DeLaender"   
+key = "new definition"   
 ND[key] = 1-NO_spaak(c, denom)[0]
 FD[key] = np.log(lamb1/(1+c*A11/A22*(lamb2-1)))/np.log(lamb1)
 
 keys = ["Chesson (2003)","Carroll et al. (2011)", "Zhao et al. (2016)",
         "Godoy & Levine (2014)", "Adler et al. (2007)", "Bimler et al. (2018)",
-        "Carmel et al. (2017)", "Saavedra et al. (2017)", "Spaak & DeLaender"]
+        "Carmel et al. (2017)", "Saavedra et al. (2017)", "new definition"]
 
 colors =  {keys[i]: rainbow(np.linspace(0, 1, len(keys)))[i]
                 for i in range(len(keys))}

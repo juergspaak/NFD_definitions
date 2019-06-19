@@ -223,4 +223,4 @@ arrow([t - time_growth[0],N_t["exp2_spec1"](t)],
 ax_arr1.text(t-15,19.6, r"$f_2(c_1N_1^*,0)$",  fontsize = fs-2,
             bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
 
-fig.savefig("Experimental_data.pdf", bbox_inches = "tight")
+fig.savefig("Experimental_data.png", bbox_inches = "tight")

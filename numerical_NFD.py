@@ -23,7 +23,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     n_spec : int, optional, default = 2
         number of species in the system
     args : tuple, optional
-        Any extra arguments to `f
+        Any extra arguments to `f`
     monotone_f : boolean or array of booleans (lenght: n_spec), default = True
         Whether ``f_i(N_i,0)`` is monotonly decreasing in ``N_i``
         Can be specified for each function separatly by passing an array.
@@ -40,7 +40,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
             Starting guess for the conversion factors from one species to the
             other. `c` is assumed to be symmetric an only the uper triangular
             values are relevant
-    force: boolean, default False
+    experimental: boolean, default False
         If True the parameters given in pars are assumed to be exact and are
         not checked. Should be set to True when used in combination with
         experimental data.
@@ -59,7 +59,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         N_star[i] equilibrium density with species `i`
         absent. N_star[i,i] is 0
     ``r_i`` : ndarray (shape = n_spec)
-        invsaion growth rates of the species
+        invasion growth rates of the species
     ``c`` : ndarray (shape = (n_spec, n_spec))
         The conversion factors from one species to the
         other. 
@@ -75,17 +75,28 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     Literature:
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI: 10.1101/482703
-    """ 
+    """
+    f(np.zeros(int(n_spec)))
     if from_R:
         if n_spec-int(n_spec) == 0:
             n_spec = int(n_spec)
         else:
             raise InputError("Number of species (`n_spec`) must be an integer")
         fold = f
-
-        def f(N, *args):
+        #f(0)
+        def f(N):
             # translate dataframes, matrices etc to np.array
-            return np.array(fold(N,*args)).reshape(-1)  
+            return np.array(fold(N)).reshape(-1)
+        """
+        if not(pars is None):
+            pars_new = {}
+            try:
+                for key in pars.keys(): # convert to np array and make writable
+                    pars_new[key] = np.array(pars[key])
+                pars = pars_new
+            except AttributeError:
+                raise InputError("Argument ``pars`` must be a dictionary or a"
+                    "labeled list. e.g. ``pars = list(N_star = N_star)")"""
     # check input on correctness
     monotone_f = __input_check__(n_spec, f, args, monotone_f)
     
@@ -95,14 +106,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         if not ("r_i" in pars.keys()):
             pars["r_i"] = np.array([f(pars["N_star"][i], *args)[i] 
                         for i in range(n_spec)])
-        def save_f(N):
-            # allow passing infinite species densities to per capita growthrate
-            if np.isinf(N).any():
-                return np.full(N.shape, -np.inf)
-            else:
-                return f(N, *args)
-        pars["f"] = save_f
-    else:
+    if not experimental:
         # obtain equilibria densities and invasion growth rates    
         pars = preconditioner(f, args,n_spec, pars, xtol)                  
     # list of all species
@@ -144,7 +148,7 @@ def __input_check__(n_spec, f, args, monotone_f):
     
     # check whether `f` is a function and all species survive in monoculutre
     try:
-        f0 = f(np.zeros(n_spec), *args)
+        f0 = f(np.zeros(n_spec))
         if f0.shape != (n_spec,):
             raise InputError("`f` must return an array of length `n_spec`")   
     except TypeError:
@@ -155,11 +159,11 @@ def __input_check__(n_spec, f, args, monotone_f):
         f = lambda N, *args: np.array(fold(N, *args))
         f0 = f(np.zeros(n_spec), *args)
         warn("`f` does not return a proper `np.ndarray`")
-        
+    """    
     if min(f0)<=0 or (not np.all(np.isfinite(f0))):
         raise InputError("All species must have positive monoculture growth"
                     +"i.e. `f(0)>0`. Especially this value must be defined")
-    
+    """
     # broadcast monotone_f if necessary
     return np.logical_and(monotone_f, np.full(n_spec, True, bool))
         
@@ -303,6 +307,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
         return a, 1/a
     fac = 2**direction
     if not np.isfinite(direction):
+        # xxx give better feedback, at what positions are nonfin values return
         raise InputError("function `f` seems to be returning nonfinite values")
     b = a*fac
     # change searching range to find c with changed size of NO
@@ -335,13 +340,16 @@ def NO_fun(pars,c, sp):
     # Compute NO for specis sp and conversion factor c
     f0 = pars["f"](switch_niche(pars["N_star"][sp[0]],sp))[sp[0]]
     fc = pars["f"](switch_niche(pars["N_star"][sp[0]],sp,c))[sp[0]]
-    
+
+    if f0 == fc:
+        return np.sign(f0-pars["r_i"])[sp[0]]*np.inf
     return (f0-pars["r_i"][sp[0]])/(f0-fc)
     
 def FD_fun(pars, c, sp):
     # compute the FD for species sp and conversion factor c
     f0 = pars["f"](switch_niche(pars["N_star"][sp[0]],sp))[sp[0]]
     fc = pars["f"](switch_niche(pars["N_star"][sp[0]],sp,c))[sp[0]]
+    
     return fc/f0
     
 def switch_niche(N,sp,c=0):
@@ -350,3 +358,4 @@ def switch_niche(N,sp,c=0):
     N[sp[0]] += np.nansum(c*N[sp[1:]])
     N[sp[1:]] = 0
     return N
+

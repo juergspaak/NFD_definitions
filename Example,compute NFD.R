@@ -6,7 +6,7 @@
 # This is not part of the install.packages("reticulate") command!
 library(reticulate)
 # set your working directory
-setwd()
+setwd("C:/Users/Jurg/Dropbox/Doktorat/Projects/P5_Fitness and niche differences/3_Programs")
 
 # loads the relevant python code
 source_python("numerical_NFD.py")
@@ -25,7 +25,7 @@ test_f <- function(N){
 
 # compute relevant parameters with python
 # the parameter `from_R = TRUE` changes data types from R to python
-pars <- find_NFD(test_f, n_spec, from_R = TRUE)
+pars <- NFD_model(test_f, n_spec, from_R = TRUE)
 ND <- pars$ND
 NO <- pars$NO
 FD <- pars$FD
@@ -53,8 +53,12 @@ test_f <- function(N){
   return(mu - A%*%N)
 }
 
+new_f <- function(N){
+  return((1-g)*s + g*lam/(1 + A%*%(g*N)))
+}
+
 # compute relevant parameters with software
-pars <- find_NFD(test_f, n_spec, from_R = TRUE)
+pars <- NFD_model(test_f, n_spec, from_R = TRUE)
 ND <- pars$ND
 NO <- pars$NO
 FD <- pars$FD
@@ -70,8 +74,9 @@ for (i in 1:n_spec){
   for (j in 1:n_spec){
     if (i==j) next
     numerator = numerator + pars$N_star[i,j]*A[i,j]
-    denominator =denominator + pars$N_star[i,j]*sqrt(A[i,j]/A[j,i]*A[i,i]*A[j,j])
+    denominator = denominator + pars$N_star[i,j]*sqrt(A[i,j]/A[j,i]*A[i,i]*A[j,j])
   NO_check_m[i] = numerator/denominator
   FD_check_m[i] = 1-denominator/mu[i]
   }
 }
+

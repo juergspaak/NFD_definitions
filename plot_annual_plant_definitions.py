@@ -6,6 +6,8 @@ from matplotlib.cm import rainbow
 import matplotlib.patches as patches
 import numpy as np
 from scipy.optimize import brentq
+plt.rcParams["font.family"] = 'Times New Roman'
+np.seterr(all = "ignore")
 
 rep = 5000
 
@@ -47,7 +49,7 @@ r_i = np.array([np.log(lamb1/(1+A12/A22*(lamb2-1))),
 S_i = (f_i_0.reshape(-1,1)-r_i)/f_i_0.reshape(-1,1)
 key = "Carroll et al. (2011)"
 ND[key] = 1-np.exp(np.mean(np.log(S_i),axis = 0))
-FD[key] = np.exp(np.var(np.log(S_i),axis = 0))
+FD[key] = np.exp(np.std(np.log(S_i),axis = 0))
 
 # Definition according to Zhao et al.
 key = "Zhao et al. (2016)"
@@ -83,6 +85,22 @@ rc = 0.5*(1/np.sqrt(A11**2+A21**2)*np.array([A11*np.ones(rep),A21])+
 FD[key] = 180/np.pi*np.arccos(np.sum(r*rc,axis = 0)/np.linalg.norm(r)
                                         /np.linalg.norm(rc,axis = 0))
 
+# Definition according to Karmel
+key = "Carmel et al. (2017)"
+# mortality rate, assumed to be minimal invasion growth rate of all
+mort = -2*np.nanmin(r_i)
+geo_mean = np.sqrt(np.prod(r_i/mort+1, axis = 0))
+NO_1 = -(1-2*geo_mean**2) + np.sqrt((1-2*geo_mean**2)**2-1)
+NO_2 = -(1-2*geo_mean**2) - np.sqrt((1-2*geo_mean**2)**2-1)
+
+
+ND[key] = 1 - np.nanmin([NO_1,NO_2], axis = 0)
+# add minimal value before nans:
+ND[key][np.argmax(np.isnan(ND[key]))] = 0
+FD[key] = np.exp(np.std(np.log(r_i/mort+1),axis = 0))**2
+s = r_i/mort +1
+test1 = np.amin([s[0]/s[1], s[1]/s[0]], axis = 0)
+
 # Definition accoding to Spaak
 
 
@@ -108,7 +126,7 @@ FD[key] = np.log(lamb1/(1+c*A11/A22*(lamb2-1)))/np.log(lamb1)
 
 keys = ["Chesson (2003)","Carroll et al. (2011)", "Zhao et al. (2016)",
         "Godoy & Levine (2014)", "Adler et al. (2007)", "Bimler et al. (2018)",
-        "Saavedra et al. (2017)", "Spaak & DeLaender"]
+        "Carmel et al. (2017)", "Saavedra et al. (2017)", "Spaak & DeLaender"]
 
 colors =  {keys[i]: rainbow(np.linspace(0, 1, len(keys)))[i]
                 for i in range(len(keys))}
@@ -142,7 +160,7 @@ if __name__ == "__main__":
     
     
     # layout
-    plt.legend(loc = "upper left")
+    plt.legend(loc = "upper left", fontsize = 12)
     
     # axis limits
     plt.xlim(min(interspec), max(interspec))
@@ -182,7 +200,7 @@ if __name__ == "__main__":
                  color = colors[key])
     
     # layout
-    plt.legend(loc = "upper left")
+    plt.legend(loc = "upper left", fontsize = 12)
     
     # axis limits
     plt.xlim(min(interspec), max(interspec))

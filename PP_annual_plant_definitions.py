@@ -74,7 +74,7 @@ ax.add_patch(rect_comp)
 save_ND()
 
 keys = ["Chesson (2003)", "Zhao et al. (2016)", "Bimler et al. (2018)",
-        "Adler et al. (2007)",
+        "Adler et al. (2007)", "Carmel et al. (2017)",
         "Carroll et al. (2011)", "Saavedra et al. (2017)", 
         "Godoy & Levine (2014)", "Spaak & DeLaender"]
 colors =  {keys[i]: rainbow(np.linspace(0, 1, len(keys)))[i]
@@ -83,7 +83,7 @@ colors =  {keys[i]: rainbow(np.linspace(0, 1, len(keys)))[i]
 lw_new = 4
 lw_old = 2
 # plot definitions that don't hit any point at all               
-for key in keys[:4]:
+for key in keys[:5]:
     plt.plot(apd.interspec, apd.ND[key], label = key, linewidth = lw_new, 
              color = colors[key])
 plt.legend(loc = "upper left", framealpha = 0)
@@ -94,7 +94,7 @@ for l in ax.lines:
     l.set_linewidth(lw_old)
     
 # plot definitions that hit one point                
-for key in keys[4:6]:
+for key in keys[5:7]:
     plt.plot(apd.interspec, apd.ND[key], label = key, linewidth = lw_new, 
              color = colors[key])
 plt.legend(loc = "upper left", framealpha = 0)
@@ -105,7 +105,7 @@ for l in ax.lines:
     l.set_linewidth(lw_old)
     
 # plot definitions that hit both point
-key = keys[6]            
+key = keys[7]            
 plt.plot(apd.interspec, apd.ND[key], label = key, linewidth = lw_new,
              color = colors[key])
 plt.legend(loc = "upper left", framealpha = 0)
@@ -115,38 +115,8 @@ for l in ax.lines:
     l.set_alpha(0.3)
     l.set_linewidth(lw_old)
 
-key = keys[7]              
+key = keys[-1]              
 plt.plot(apd.interspec, apd.ND[key], label = key, linewidth = lw_new,
              color = colors[key])
 plt.legend(loc = "upper left", framealpha = 0)
 save_ND()
-
-"""
-###############################################################################
-# plotting the results for ND
-fig = plt.figure(figsize = (9,9))
-
-ND_range = [-0.5,1.5]
-          
-# plot NFD parameters          
-for key in keys:
-    plt.plot(interspec, FD[key], label = key, linewidth = 2, alpha = 1, 
-             color = colors[key])
-
-# layout
-plt.legend(loc = "upper left")
-
-# axis limits
-plt.xlim(min(interspec), max(interspec))
-plt.xticks([0,sign*1])
-plt.ylim(-3,3)
-
-
-plt.axhline(y=0, color = "black", linestyle = ":")
-plt.axvline(x=0, color = "black", linestyle = ":")
-
-# axis labels
-plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = 16)
-plt.ylabel(r'Fitness difference $(\mathcal{F})$', fontsize = 16)
-
-fig.savefig("PP_slides/FD in annual plants.png", transparent = "True")"""

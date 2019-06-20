@@ -103,7 +103,7 @@ x = np.linspace(-1,3,101)
 plt.plot(x,x/(1-x), "white", linewidth = 4)
 plt.axis([x[0],2,-1,4])
 plt.ylabel(r"Fitness differences$(-\mathcal{F})$", fontsize = fs)
-plt.xlabel(r"Niche differnces $(\mathcal{N})$", fontsize = fs)
+plt.xlabel(r"Niche differences $(\mathcal{N})$", fontsize = fs)
 
 plt.axhline(y=0, color = "white", linestyle = ":", linewidth = 4)
 plt.axvline(x=0, color = "white", linestyle = ":", linewidth = 4)
@@ -133,8 +133,8 @@ plt.plot([0,0], [0,0], 'r>',  markersize = ms,
 plt.plot([0.2,0.2], [-0.3,3], 'D', markersize = ms,
          color = color, label = "competitive\nexclusion")
 
-plt.plot([0.6,0.6], [-0.5,1.2], '*',  markersize = ms,
-         color = color, label = "stable\ncoexistence")
+plt.plot([0.232,0.232], [-0.12968,0.06468], '*',  markersize = ms,
+         color = color, label = "coexistence\n(from exp)")
 plt.legend(numpoints = 1, fancybox = True, framealpha = 0.5,
            fontsize = 16, loc = "upper left")
 save_coex()

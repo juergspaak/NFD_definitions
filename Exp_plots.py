@@ -212,7 +212,7 @@ arrow([t - time_growth[0],N_t["spec0_low"](t)],
     [t + 7 - time_growth[0],N_t["spec0_low"](t + 7)],
     ax_arr0, 0.4, [0,0.2],
     arrowprops = dict(facecolor='white', ls = 'dashed'))
-ax_arr0.text(t-15,19.4, r"$f_1(c_2N_2^*,0)$",  fontsize = fs-2,
+ax_arr0.text(t-15,18.8, r"$f_1(c_2N_2^*,0)$",  fontsize = fs-2,
             bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
 t = 44
 arrow([t - time_growth[0],N_t["spec1_high"](t)],
@@ -222,4 +222,4 @@ arrow([t - time_growth[0],N_t["spec1_high"](t)],
 ax_arr1.text(t-15,19.6, r"$f_2(c_1N_1^*,0)$",  fontsize = fs-2,
             bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
 
-fig.savefig("Experimental_data.png", bbox_inches = "tight")
+fig.savefig("Experimental_data.pdf", bbox_inches = "tight")

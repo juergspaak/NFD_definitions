@@ -58,7 +58,7 @@ x = np.linspace(-1,3,101)
 plt.plot(x,x/(1-x), "black")
 plt.axis([x[0],2,-1,4])
 plt.ylabel(r"Fitness differences$(-\mathcal{F})$", fontsize = fs)
-plt.xlabel(r"Niche differnces $(\mathcal{N})$", fontsize = fs)
+plt.xlabel(r"Niche differences $(\mathcal{N})$", fontsize = fs)
 
 plt.axhline(y=0, color = "black", linestyle = ":")
 plt.axvline(x=0, color = "black", linestyle = ":")
@@ -100,56 +100,3 @@ plt.fill(coex_x,coex_y, color = "grey",alpha = 0.5)
 plt.legend(numpoints = 1)
 
 fig.savefig("Extended Coexistence region.pdf")
-
-###############################################################################
-# Experimental setup
-
-fig = plt.figure(figsize = (11,7))
-x = y = 0.01
-plt.arrow(x,y,0.9,0, head_width = 0.01, color = "black")
-plt.arrow(x,y,0,0.9, head_width = 0.01, color = "black")
-
-t1 = 0.7
-equi = 0.5
-
-plt.hlines(equi,x,0.9+x, color = "black", linestyles = "dotted")
-plt.vlines(t1,y,0.9+x, color = "black", linestyles = "dashed")
-plt.axis([0,1,0,1])
-
-fs = 16
-plt.ylabel("Density", fontsize = fs)
-plt.yticks([equi], [r"$N_i^*$"], fontsize = fs)
-plt.xticks([t1], [r"$t_1$"], fontsize = fs)
-plt.xlabel(r"Time $t$", fontsize = fs)
-
-ax = plt.gca()
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.spines['bottom'].set_visible(False)
-ax.spines['left'].set_visible(False)
-
-# plot experiment 1
-speed = 15
-time,dt = np.linspace(x,t1,10, retstep = True)
-growth = equi/(1+np.exp(-speed*time)*(equi/x-1))
-plt.plot(time, growth, 'o', color = "black")
-plt.text(0.3,0.33,"1. Monoculture growth\nfrom low abundance",
-         va = "top", ha = "center", fontsize = 16)
-
-decline = equi/(1+np.exp(-speed*time)*(equi/0.9-1))+x
-plt.scatter(time, decline,facecolor = "none", color = "black")
-plt.text(0.3,0.7,"2. Monoculture growth\nfrom high abundance",
-         va = "top", ha = "center", fontsize = 16)
-
-time2 = t1+np.arange(3)*dt
-plt.plot(time2,equi*np.ones(3),'v', color = "black")
-invasion = equi/(1+np.exp(-speed*(time2-t1))*(equi/x-1))+x
-plt.plot(time2, invasion, '^', color = "black")
-
-plt.text(0.82,0.7,"3. Invasion\nexperiment;\nresident density",
-         va = "top", ha = "center", fontsize = 16)
-
-plt.text(0.82,0.3,"3. Invasion\nexperiment;\ninvader density",
-         va = "top", ha = "center", fontsize = 16)
-
-fig.savefig("Experimental_cartoon.pdf")

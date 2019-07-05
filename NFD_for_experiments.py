@@ -17,9 +17,6 @@ except ImportError:
     # in case this code is used in a submodule, import from the submodule
     from nfd_definitions.numerical_NFD import NFD_model, InputError
 
-class InputError(Exception):
-    pass
-
 def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
                  f0 = "spline", k = 3, s = "fac=1", log = True,
                  id_exp_1 = None, visualize = True, extrapolate = "True",
@@ -140,7 +137,7 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
     dens = np.array(dens)
     time = np.array(time)
     input_par, log, id_exp_1 = __input_check_exp__(k , s, f0, N_star,
-                    id_exp_1, log, extrapolate, dens, time, growth_data) 
+                    id_exp_1, log, extrapolate, dens, time, growth_data)
         
     # impute na if necessary
     if na_action == "impute": # compute mean
@@ -154,7 +151,7 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
     # per capita growth rate for both species in monoculture
     f, f_spec = per_capita_growth(dens, time, input_par, log)
 
-    if N_star == "spline":
+    if type(N_star) == str and N_star == "spline":
         N_star = log["nanmean"](dens[...,-1], axis = (1)) # starting guess
         # compute N_star using the spline interpolations
         for i in range(2):
@@ -220,9 +217,9 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
              axis = -1)
     
     # add predefined N_star value to growth_data if needed
-    if N_star == "average":
+    if type(N_star) == str and N_star == "average":
         N_star = log["nanmean"](dens[...,-1], axis = (1))
-    if N_star != "spline":
+    if type(N_star) != str or N_star != "spline":
         # per cap grwth is 0 at equilibrium
         growth_append = np.array([N_star, [0,0]]).T.reshape(2,2,1)
         growth_data = np.append(growth_data, growth_append, axis = -1)
@@ -232,9 +229,9 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
     # set the values for f0
     if (type(f0) == str) and f0[:5] == "perc=":
         f0 = np.nanpercentile(per_cap_growth, float(f0[5:]), axis = (1,2))
-    elif f0 == "linear":
+    elif type(f0) == str and f0 == "linear":
         f0 = np.nanmean(per_cap_growth[:,id_exp_1,0], axis = 1)    
-    if f0 != "spline": # force spline to use f0
+    if type(f0) != str or f0 != "spline": # force spline to use f0
         scal = 2.0**(-np.arange(2).reshape(-1,1))
         dens_ap = scal*np.nanmin(dens, axis = (1,2))
         gr_ap = f0*np.ones((len(scal),2))
@@ -351,7 +348,6 @@ def dens_over_time(f_spec, time, dens, id_exp_1):
                 N_start = np.nanmean(dens[i, id_exp_1, 0])
             else:
                 N_start = np.nanmean(dens[i, ~id_exp_1, 0])
-            print(N_start, key)
             # solve differential equation given by per-capita growth rates
             N_t_fun[key] = lambda t, i = i, N_start = N_start: odeint(
                     lambda N,t: N*f_spec(N,i), N_start,

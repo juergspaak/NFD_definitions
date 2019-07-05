@@ -238,6 +238,8 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
             if np.isinf(N).any():
                 return np.full(N.shape, -np.inf)
             else:
+                N = N.copy()
+                N[N<0] = 0 # function might be undefined for negative densities
                 return f(N, *args)
     pars["f"] = save_f
     

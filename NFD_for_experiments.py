@@ -2,10 +2,7 @@
 @author: J.W.Spaak
 Numerically compute ND and FD for experimental data
 """
-
 import numpy as np
-import matplotlib.pyplot as plt
-from warnings import warn
 
 from scipy.interpolate import UnivariateSpline as uni_sp
 from scipy.optimize import brentq, fsolve
@@ -16,11 +13,11 @@ try:
 except ImportError:
     # in case this code is used in a submodule, import from the submodule
     from nfd_definitions.numerical_NFD import NFD_model, InputError
-
+ 
 def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
                  f0 = "spline", k = 3, s = "fac=1", log = True,
                  id_exp_1 = None, visualize = True, extrapolate = "True",
-                 growth_data = np.zeros((2,2,0))):
+                 growth_data = np.zeros((2,2,0)), from_R = False):
     """Compute the ND and FD for two-species experimental data
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -94,7 +91,9 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
         Can be used to pass growth rates at to high (or low densities).
         e.g. growth_data = [[[1e20],[-dil]],
                             [[1e20],[-dil]]]
-        Where dil is the dilution rate of the system. 
+        Where dil is the dilution rate of the system.
+    from_R: boolean, default False
+        Set to True if function is called via R by reticulate package.
         
     Returns
     -------
@@ -133,12 +132,18 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI:
     """
-    # convert input parameters
-    dens = np.array(dens)
-    time = np.array(time)
+    if from_R:
+        dens = np.array([np.array(dens[0]), np.array(dens[1])])
+        time = np.array(time)
+        r_i = np.array(r_i)
+
+        visualize = False # leads to fatal Error in R
+    else:
+        # convert input parameters
+        dens = np.array(dens)
+        time = np.array(time)
     input_par, log, id_exp_1 = __input_check_exp__(k , s, f0, N_star,
-                    id_exp_1, log, extrapolate, dens, time, growth_data)
-        
+                    id_exp_1, log, extrapolate, dens, time, growth_data) 
     # impute na if necessary
     if na_action == "impute": # compute mean
         imp_av = lambda X, axis: log["exp"](np.nanmean(log["log"](X),
@@ -147,10 +152,10 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
         na_imputed[...,1:-1] = imp_av([na_imputed[...,:-2],
                 na_imputed[...,1:-1], na_imputed[...,2:]], axis = 0)
         dens[np.isnan(dens)] = na_imputed[np.isnan(dens)] # replace imputation
-    
+
     # per capita growth rate for both species in monoculture
     f, f_spec = per_capita_growth(dens, time, input_par, log)
-
+    
     if type(N_star) == str and N_star == "spline":
         N_star = log["nanmean"](dens[...,-1], axis = (1)) # starting guess
         # compute N_star using the spline interpolations
@@ -162,7 +167,7 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
     # set starting guess for c
     c = np.ones((2,2))
     c[[1,0],[0,1]] = [N_star[0]/N_star[1], N_star[1]/N_star[0]] 
-    
+
     # compute the ND, FD etc. parameters
     pars = {"N_star": np.array([[0,N_star[1]],[N_star[0],0]]),
             "r_i": r_i, "f": f, "c": c}
@@ -219,6 +224,11 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
     # add predefined N_star value to growth_data if needed
     if type(N_star) == str and N_star == "average":
         N_star = log["nanmean"](dens[...,-1], axis = (1))
+        if not np.all(np.isfinite(N_star)):
+            raise InputError("Computed values for ``N_star`` "
+                "are {} and non-finite.".format(N_star) +
+                "Please pass directly or check that the last measuring time"
+                "does contain at least some finite values")
     if type(N_star) != str or N_star != "spline":
         # per cap grwth is 0 at equilibrium
         growth_append = np.array([N_star, [0,0]]).T.reshape(2,2,1)
@@ -230,14 +240,22 @@ def __input_check_exp__(k , s, f0, N_star, id_exp_1, log, extrapolate,
     if (type(f0) == str) and f0[:5] == "perc=":
         f0 = np.nanpercentile(per_cap_growth, float(f0[5:]), axis = (1,2))
     elif type(f0) == str and f0 == "linear":
-        f0 = np.nanmean(per_cap_growth[:,id_exp_1,0], axis = 1)    
-    if type(f0) != str or f0 != "spline": # force spline to use f0
+        f0 = np.nanmean(per_cap_growth[:,id_exp_1,0], axis = 1)
+    if type(f0) != str and not np.all(np.isfinite(f0)):
+            raise InputError("Computed values for ``f0`` "
+                "are {} and non-finite.".format(f0) +
+                "Please pass directly or check that the first measuring times"
+                "do contain at least some finite values")
+    if type(f0) != str or  f0 != "spline": # force spline to use f0
         scal = 2.0**(-np.arange(2).reshape(-1,1))
         dens_ap = scal*np.nanmin(dens, axis = (1,2))
         gr_ap = f0*np.ones((len(scal),2))
         growth_append = [[dens_ap[:,0], gr_ap[:,0]],[dens_ap[:,1], gr_ap[:,1]]]
         growth_data = np.append(growth_data, growth_append, axis = -1)        
-        
+    if np.any(np.isnan(growth_data)):
+        raise InputError("Growth rates to be fitted appear to be non-finite"
+            "NA are allowed in ``dens``, however not in ``time``, ``r_i``"
+            ", ``f0``, ``growth_data`` or ``N_star``")        
     input_par["growth_data"] = growth_data
     return input_par, log, id_exp_1
     
@@ -293,7 +311,7 @@ def dens_to_per_capita(dens, time, input_par, log, i):
     # convert densities over time to per capita growth rate
     time_diff = time[1:]-time[:-1]
     per_cap_growth = np.log(dens[...,1:]/dens[...,:-1])/time_diff
-
+    
     # use middle point for growth rate
     dens_mid = log["nanmean"]([dens[...,1:], dens[...,:-1]], axis = 0)
     
@@ -328,6 +346,11 @@ def dens_to_per_capita(dens, time, input_par, log, i):
         s = float(input_par["s"][i][4:])*input_par["var"][i]*len(w)
     else:
         s = None
+    if np.any(np.isnan(per_cap_growth)):
+        raise InputError("Growth rates to be fitted appear to be non-finite"
+            "for species {}.".format(i) +
+            "NA are allowed in ``dens``, however not in ``time``, ``r_i``"
+            ", ``f0`` or ``N_star``") 
     dNdt = uni_sp(log["log"](dens_finite), per_cap_growth,
                   k = input_par["k"][i], s = s, w = w)
     
@@ -357,10 +380,14 @@ def dens_over_time(f_spec, time, dens, id_exp_1):
     
 def visualize_fun(time, dens, pars, N_t_fun, id_exp_1, log, f_spec):
     # visualize the fitted population density and the per capita growthrate
+    
+    import matplotlib.pyplot as plt
     fig, ax = plt.subplots(2,2, figsize = (12,12),
                            sharey = "row", sharex ="row")
+    
     # plot the measured densities and the fitted densities
     col = ["black", "grey"]
+    
     for i in range(2):
         j = [1,0][i] # the index of the other species
     

@@ -174,8 +174,9 @@ def __input_check__(n_spec, f, args, monotone_f, pars):
     try:
         f0 = f(np.zeros(n_spec), *args)
         if f0.shape != (n_spec,):
-            pars["fucntion_call"] = "f(0)"
-            pars["return_value"] = f0
+            if not (pars is None):
+                pars["function_call"] = "f(0)"
+                pars["return_value"] = f0
             raise InputError("`f` must return an array of length `n_spec`")   
     except TypeError:
         print("function call of `f` did not work properly")

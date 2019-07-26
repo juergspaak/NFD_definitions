@@ -129,7 +129,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
                         for i in range(n_spec)])
     if not experimental:
         # obtain equilibria densities and invasion growth rates    
-        pars = preconditioner(f, args,n_spec, pars, xtol)
+        pars = preconditioner(f, args,n_spec, pars, xtol)                  
     # list of all species
     l_spec = list(range(n_spec))
     # compute conversion factors
@@ -238,9 +238,16 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
             if np.isinf(N).any():
                 return np.full(N.shape, -np.inf)
             else:
-                N[N<0] = 0 # values below 0 might be passed to find equilibrium
                 return f(N, *args)
     pars["f"] = save_f
+    # c must be a positive real number
+    if (np.any(~np.isfinite(pars["c"])) or np.any(pars["c"]<=0) 
+            or pars["c"].dtype != float):
+        warn("Some entries in pars['c'] were not positive real numbers."
+             "These are replaced with 1")
+        pars["c"] = np.real(pars["c"])
+        pars["c"][pars["c"] <= 0] = 1
+        pars["c"][~np.isfinite(pars["c"])] = 1
     
     for i in range(n_spec):
         # to set species i to 0
@@ -249,8 +256,6 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         N_pre,info,a ,b = fsolve(lambda N: pars["f"](np.insert(N,i,0))[ind],
                             pars["N_star"][i,ind], full_output = True,
                             xtol = xtol)
-        
-
         
         # Check stability of equilibrium
         # Jacobian of system at equilibrium
@@ -286,10 +291,7 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
             pars["fsolve output"] = info
             raise InputError("Found equilibrium is not stable, "
                         + "with species {} absent.".format(i)
-                        + " Please provide manually via the `pars` argument")
-            
-        
-        
+                        + " Please provide manually via the `pars` argument")        
             
         # save equilibrium density and invasion growth rate
         pars["N_star"][i] = np.insert(N_pre,i,0)
@@ -312,9 +314,8 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     c : float, the conversion factor c_sp[0]^sp[1]
     """
     # check for special cases first
-    no_comp = np.array([NO_fun(pars,1, sp), NO_fun(pars,1, sp[::-1])])
-    # no_comp = 0 or no_comp = np.nan indicates no interaction between species
-    no_comp = np.logical_or(np.isnan(no_comp), np.isclose(no_comp,0))
+    no_comp = np.isclose([NO_fun(pars,1, sp),
+                          NO_fun(pars,1, sp[::-1])], [0,0])
     if no_comp.any():
         return special_case(no_comp, sp)
     
@@ -332,7 +333,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
         c = fsolve(inter_fun,pars["c"][sp[0],sp[1]],xtol = xtol)[0]
         if np.abs(inter_fun(c))>xtol:
             pars["c found by fsolve"] = c
-            raise ValueError("Not able to find c_{}^{}.".format(*sp) +
+            raise InputError("Not able to find c_{}^{}.".format(*sp) +
                 "Please pass a better guess for c_i^j via the `pars` argument")
         return c, 1/c
         
@@ -353,12 +354,16 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
         pars["function outputs"] = [pars["f"](inp) for 
              inp in pars["function inputs"]]
         raise InputError("function `f` seems to be returning nonfinite values")
-    b = a*fac
+    b = float(a*fac)
     # change searching range to find c with changed size of NO
     while np.sign(inter_fun(b)) == direction:
         a = b
         b *= fac
-    
+        # test whether a and be behave as they should (e.g. nonfinite)
+        if not((2*a == b) or (2*b == a)) or np.sign(b-a) != direction:
+            raise InputError("Not able to find c_{}^{}.".format(*sp) +
+                "Please pass a better guess for c_i^j via the `pars` argument"+
+                ". Please also check for non-positive entries in pars[``c``]")
     # solve equation
     try:
         c = brentq(inter_fun,a,b)

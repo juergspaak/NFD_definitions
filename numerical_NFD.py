@@ -129,7 +129,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
                         for i in range(n_spec)])
     if not experimental:
         # obtain equilibria densities and invasion growth rates    
-        pars = preconditioner(f, args,n_spec, pars, xtol)                  
+        pars = preconditioner(f, args,n_spec, pars, xtol)
     # list of all species
     l_spec = list(range(n_spec))
     # compute conversion factors
@@ -238,6 +238,7 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
             if np.isinf(N).any():
                 return np.full(N.shape, -np.inf)
             else:
+                N[N<0] = 0 # values below 0 might be passed to find equilibrium
                 return f(N, *args)
     pars["f"] = save_f
     
@@ -311,8 +312,9 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     c : float, the conversion factor c_sp[0]^sp[1]
     """
     # check for special cases first
-    no_comp = np.isclose([NO_fun(pars,1, sp),
-                          NO_fun(pars,1, sp[::-1])], [0,0])
+    no_comp = np.array([NO_fun(pars,1, sp), NO_fun(pars,1, sp[::-1])])
+    # no_comp = 0 or no_comp = np.nan indicates no interaction between species
+    no_comp = np.logical_or(np.isnan(no_comp), np.isclose(no_comp,0))
     if no_comp.any():
         return special_case(no_comp, sp)
     

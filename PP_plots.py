@@ -135,6 +135,7 @@ plt.plot([0.2,0.2], [-0.3,3], 'D', markersize = ms,
 
 plt.plot([0.232,0.232], [-0.12968,0.06468], '*',  markersize = ms,
          color = color, label = "coexistence\n(from exp)")
+
 plt.legend(numpoints = 1, fancybox = True, framealpha = 0.5,
            fontsize = 16, loc = "upper left")
 save_coex()

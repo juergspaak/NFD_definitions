@@ -101,7 +101,7 @@ r_i = np.nanmean(r_i, axis = -1)
 dens = np.array([BS4_dens[BS4_id, 2:inv_id], BS5_dens[~BS4_id, 2:inv_id]])
 
 pars, N_t, N_t_data, fig, ax = NFD_experiment(dens, time[2:inv_id], r_i, 
-                                              f0 = "linear")
+                                    f0 = "linear", N_star = "average")
 N_star = pars["N_star"][[1,0],[0,1]]
 
 # plot results

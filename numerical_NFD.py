@@ -144,7 +144,6 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     # compute NO and FD
     NO = np.empty(n_spec)
     FD = np.empty(n_spec)
-    fc = np.empty(n_spec) # no niche growth rate
     
     for i in l_spec:
         # creat a list with i at the beginning [i,0,1,...,i-1,i+1,...,n_spec-1]
@@ -162,7 +161,7 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     pars["FD"] = FD
     pars["c"] = c
     pars["f0"] = pars["f"](np.zeros(n_spec)) # monoculture growth rate
-    pars["fc"] = fc*pars["f0"] # no niche growth rate
+    pars["fc"] = FD*pars["f0"] # no niche growth rate
     return pars
   
 def __input_check__(n_spec, f, args, monotone_f, pars):

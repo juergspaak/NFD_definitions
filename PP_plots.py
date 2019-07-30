@@ -23,12 +23,12 @@ def save_res(counter = [1]):
                 transparent = "True")
     counter[0] += 1
 
-fig, ax = plt.subplots(2,2, figsize = (9,7), sharex = True, sharey = True)
+fig, ax = plt.subplots(1,3, figsize = (15,6), sharex = True, sharey = True)
 bars = np.array([0.1,0.2,0.3,0.4,0.5,0.4,0.3,0.2,0.1])
 x = np.arange(len(bars))
 
-ax[0,0].set_xticks([])
-ax[0,0].set_yticks([])
+ax[0].set_xticks([])
+ax[0].set_yticks([])
 
 ax_all = fig.add_subplot(1,1,1, frameon = False)
 ax_all.set_xticks([])
@@ -40,13 +40,13 @@ ax_all.set_ylabel("Consumption $u_{il}$\n(Dependence on limiting factor)"
            , fontsize = fs)
 
 axs = ax.flatten()
-dist = [4,4,10,0]
-size = [1,0.5,1,1]
-NO = [r"$\mathcal{N} =\frac{2}{3}$", r"$\mathcal{N}_r = \frac{3}{4}$" + "\n"
-   r"$\mathcal{N}_b = \frac{1}{2}$", r"$\mathcal{N} = 1$", r"$\mathcal{N} = 0$"]
-ax[0,0].set_xlim(-7,15)
-ax[0,0].set_ylim(0,0.6)
-for i in range(4):
+dist = [0,4,10]
+size = [1,1,1]
+NO = [r"$\mathcal{N} = 0$", r"$\mathcal{N} =\frac{2}{3}$",
+      r"$\mathcal{N} = 1$"]
+ax[0].set_xlim(-7,15)
+ax[0].set_ylim(0,0.6)
+for i in [1,0,2]:
     # barplots of dependence on limiting factor
     axs[i].bar(x - dist[i]/2,bars, color = "red", alpha = 1)
     axs[i].bar(x + dist[i]/2,size[i]*bars, color = "blue", alpha = 1)

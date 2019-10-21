@@ -100,6 +100,12 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
     DOI: 10.1101/482703
     """
+    if n_spec == 1:
+        # species case, single species are assumed to have ND = 1
+        raise InputError("ND and FD are not (properly) defined for a single"
+            "species community."
+            "If needed assign manualy ND = 1 and FD = 0 for this case")
+    
     if from_R:
         if n_spec-int(n_spec) == 0:
             n_spec = int(n_spec)

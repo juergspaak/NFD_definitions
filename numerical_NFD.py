@@ -264,12 +264,14 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         r = np.zeros((n_spec-1, n_spec-1))
         r[np.triu_indices(n_spec-1)] = info["r"].copy()
         jac = np.diag(N_pre).dot(info["fjac"].T).dot(r)
-        
         # check whether we found equilibrium
         if np.amax(np.abs(info["fvec"]))>xtol:
             pars["equilibrium found with spec{} absent".format(i)] = N_pre
             pars["growth at found equilibrium"] = info["fvec"]
-            pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            try:
+                pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            except np.linalg.LinAlgError:
+                pass
             pars["fsolve output"] = info
             raise InputError("Not able to find resident equilibrium density, "
                         + "with species {} absent.".format(i)

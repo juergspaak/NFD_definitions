@@ -8,7 +8,8 @@ from scipy.optimize import brentq, fsolve
 from warnings import warn
 
 def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
-             experimental = False, from_R = False, xtol = 1e-5):
+             experimental = False, from_R = False, xtol = 1e-5,
+             estimate_N_star_mono = False):
     """Compute the ND and FD for a differential equation f
     
     Compute the niche difference (ND), niche overlapp (NO), 
@@ -48,6 +49,12 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         Converts types of f and equilibria.
     xtol: float, default 1e-10
         Precision requirement of solving
+    estimate_N_star_mono: boolean, default False
+        If True, then N_star[i,j] will be estimated with monoculture 
+        equilibrium density of species j.
+        Setting to True will potentially reduce speed, but result in more
+        robust behaviour.
+        Can only be used if ``f`` is monotone, i.e. monotone_f == True
         
     Returns
     -------
@@ -135,7 +142,8 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
                         for i in range(n_spec)])
     if not experimental:
         # obtain equilibria densities and invasion growth rates    
-        pars = preconditioner(f, args,n_spec, pars, xtol)                  
+        pars = preconditioner(f, args,n_spec, pars, xtol, monotone_f,
+                              estimate_N_star_mono)                  
     # list of all species
     l_spec = list(range(n_spec))
     # compute conversion factors
@@ -198,7 +206,8 @@ def __input_check__(n_spec, f, args, monotone_f, pars):
 class InputError(Exception):
     pass
         
-def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
+def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
+                   estimate_N_star_mono):
     """Returns equilibria densities and invasion growth rates for system `f`
     
     Parameters
@@ -218,10 +227,9 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
     """ 
     if pars is None:
         pars = {}
-
+        
     # expected shapes of pars
-    pars_def = {"N_star": np.ones((n_spec, n_spec), dtype = "float"),
-                "c": np.ones((n_spec,n_spec)),
+    pars_def = {"c": np.ones((n_spec,n_spec)),
                 "r_i": np.zeros(n_spec)}
     
     warn_string = "pars[{}] must be array with shape {}."\
@@ -239,6 +247,25 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         except AttributeError: #`pars` isn't an array
             pars[key] = pars_def[key]
             warn(warn_string.format(key,pars_def[key].shape))
+    
+    # estimate N_star as monoculture equilibrium densities
+    try:
+        if pars["N_star"].shape == (n_spec, n_spec):
+            pass # correct shape
+        elif pars["N_star"].shape == (n_spec):
+            # assume pars["N_star"][i] is monoculture of species i
+            pars["N_star"] = pars["N_star"]*np.ones((n_spec, n_spec))
+        else: # `pars` doesn't have expected shape
+            pars["N_star"] = np.ones(n_spec)
+            estimate_N_star_mono = True
+            warn(warn_string.format(key,pars_def[key].shape))
+    except KeyError: # key not present in `pars`
+        pars["N_star"] = np.ones(n_spec)
+        estimate_N_star_mono = True
+    except AttributeError: #`pars` isn't an array
+        pars[key] = pars_def[key]
+        warn(warn_string.format(key,pars_def[key].shape))            
+            
     def save_f(N):
             # allow passing infinite species densities to per capita growthrate
             if np.isinf(N).any():
@@ -248,6 +275,44 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
                 N[N<0] = 0 # function might be undefined for negative densities
                 return f(N, *args)
     pars["f"] = save_f
+    # monoculture growth rate
+    pars["f0"] = pars["f"](np.zeros(n_spec))
+    
+    if estimate_N_star_mono and np.all(monotone_f):
+        if np.ndim(pars["N_star"])==2:
+            N_star_mono = np.mean(pars["N_star"], axis = 0)
+        else:
+            N_star_mono = pars["N_star"]
+        
+        # starting estimates for N_star must be positive real numbers
+        N_star_mono[N_star_mono<0] = 1
+        N_star_mono[~np.isfinite(N_star_mono)] = 1
+        
+        # estimate N_star_via 
+        for i in range(n_spec):
+            if pars["f0"][i]<0:
+                continue # species can't survive in monoculture
+            counter = 0
+            # to avoid overflow, how often can we double?
+            max_counter = (np.log(np.finfo(float).max) - 
+                           np.log(N_star_mono[i]))/np.log(2)
+            growth = pars["f"](np.insert(np.zeros(n_spec-1), i,
+                             N_star_mono[i]))[i]
+            while (growth>0 and counter < max_counter-2):
+                N_star_mono[i] *= 2
+                growth = pars["f"](np.insert(np.zeros(n_spec-1), i,
+                             N_star_mono[i]))[i]
+                counter += 1
+            if counter > max_counter-2:
+                raise InputError(('Monoculture growth rate of species {i} does'
+                    ' not become negative with increasing N_{i}, '
+                    'i.e. ``f_{i}(N_{i})``>0 for any N').format(i=i))
+            N_star_mono[i] = brentq(lambda N: pars["f"](
+                    np.insert(np.zeros(n_spec-1), i,N))[i], 0, N_star_mono[i])
+        # estimate that equilibrium density in each community is the 
+        # monoculture equilibrium
+        pars["N_star"] = N_star_mono*np.ones((n_spec, n_spec))
+    
     # c must be a positive real number
     if (np.any(~np.isfinite(pars["c"])) or np.any(pars["c"]<=0) 
             or pars["c"].dtype != float):
@@ -306,7 +371,6 @@ def preconditioner(f, args, n_spec, pars, xtol = 1e-10):
         # save equilibrium density and invasion growth rate
         pars["N_star"][i] = np.insert(N_pre,i,0)
         pars["r_i"][i] = pars["f"](pars["N_star"][i])[i]
-        pars["f0"] = pars["f"](np.zeros(n_spec))
     return pars
     
 def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):

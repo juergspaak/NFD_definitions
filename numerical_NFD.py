@@ -352,7 +352,10 @@ def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
         if not (np.all(N_pre>0) and np.all(np.isfinite(N_pre))):
             pars["equilibrium found with spec{} absent".format(i)] = N_pre
             pars["growth at found equilibrium"] = info["fvec"]
-            pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            try:
+                pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            except np.linalg.LinAlgError:
+                pass
             pars["fsolve output"] = info
             raise InputError("Found equilibrium is not feasible (i.e. N*>0), "
                         + "with species {} absent.".format(i)
@@ -362,7 +365,10 @@ def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
         if max(np.real(np.linalg.eigvals(jac)))>0:
             pars["equilibrium found with spec{} absent".format(i)] = N_pre
             pars["growth at found equilibrium"] = info["fvec"]
-            pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            try:
+                pars["eigenvalues equilibrium"] = np.linalg.eigvals(jac)
+            except np.linalg.LinAlgError:
+                pass
             pars["fsolve output"] = info
             raise InputError("Found equilibrium is not stable, "
                         + "with species {} absent.".format(i)

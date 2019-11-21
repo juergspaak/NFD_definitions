@@ -210,9 +210,12 @@ arrow([t - time_growth[0],N_t["spec0_low"](t)],
     arrowprops = dict(facecolor='lightblue', ls = 'dashed'))
 save_exp(ax_leg, handles)
 ax_arr0.clear() # clear arrwos of species 1
+ax_arr0.set_yticks([])
+
 ax_arr0.set_ylim(*np.log(ax[0].get_ylim()))
 ax_arr0.set_xlim(ax[0].get_xlim())
 ax_arr1.clear()
+ax_arr1.set_yticks([])
 ax_arr1.set_ylim(*np.log(ax[1].get_ylim()))
 ax_arr1.set_xlim(ax[1].get_xlim())
 

@@ -47,7 +47,7 @@ ax[1].bar(x+12,bars, color = "black", alpha = 0.5, edgecolor = "black")
 
 ax[1].set_xlabel("Resource $R_l$\n(Limiting factor)", fontsize = fs)
 ax[1].set_xticks([])
-fig.savefig("Figure, Limiting factors.pdf")
+fig.savefig("Figure_Limiting_factors.eps")
 
 ###############################################################################
 # Extended regions
@@ -99,4 +99,4 @@ plt.fill(coex_x,coex_y, color = "grey",alpha = 0.5)
 
 plt.legend(numpoints = 1)
 
-fig.savefig("Extended Coexistence region.pdf")
+fig.savefig("Extended_Coexistence_region.eps")

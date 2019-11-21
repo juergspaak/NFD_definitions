@@ -82,7 +82,7 @@ time_p = time_growth - time_growth[0] # start at day 0
 
 
 # plot figure
-fig, ax = plt.subplots(1,2,sharex = True, sharey = False, figsize = (11,9))
+fig, ax = plt.subplots(1,2,sharex = True, sharey = False, figsize = (9,7))
 
 # plot the experimentaly measured data
 ax[0].errorbar(time_p, growth[0], growth_err[0], fmt = "^",  color = "black",
@@ -118,7 +118,7 @@ ax[1].errorbar(time[inv_id:] - time_growth[0], BS4_inv[inv_id:],
   color = "black", ecolor = "lightgrey")
 
 # customize axis labels etc
-fs = 16 # fontsize
+fs = 14 # fontsize
 ax[0].set_ylim([8e5,6e9])
 ax[0].semilogy()
 ax[1].set_ylim([8e5,6e9])
@@ -142,7 +142,7 @@ exp3, = ax_leg.plot(0, np.nan, "s",  color = "black", fillstyle = "none",
 spec1 = mpatches.Patch(color='black', label = 'Species 1')
 spec2 = mpatches.Patch(color='grey', label = 'Species 2')
 ax_leg.legend(handles = [exp1,exp2,exp3,spec1, spec2],
-              bbox_to_anchor=(0.5,-0.1), loc="upper center", ncol = 5)
+              bbox_to_anchor=(0.5,-0.08), loc="upper center", ncol = 5)
 
 # plot equilibrium
 ax[0].axhline(N_star[0], color = "black", linestyle = "-")
@@ -222,4 +222,5 @@ arrow([t - time_growth[0],N_t["spec1_high"](t)],
 ax_arr1.text(t-15,19.6, r"$f_2(c_1N_1^*,0)$",  fontsize = fs-2,
             bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
 
-fig.savefig("Experimental_data.pdf", bbox_inches = "tight")
+#Wfig.tight_layout()
+fig.savefig("Experimental_data.pdf")

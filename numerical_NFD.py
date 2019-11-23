@@ -303,7 +303,7 @@ def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
                 growth = pars["f"](np.insert(np.zeros(n_spec-1), i,
                              N_star_mono[i]))[i]
                 counter += 1
-            if counter > max_counter-2:
+            if counter >= max_counter-2:
                 raise InputError(('Monoculture growth rate of species {i} does'
                     ' not become negative with increasing N_{i}, '
                     'i.e. ``f_{i}(N_{i})``>0 for any N').format(i=i))

@@ -2,7 +2,7 @@
 differences for the annual plant model"""
 
 import matplotlib.pyplot as plt
-from matplotlib.cm import rainbow
+from matplotlib.cm import viridis
 import matplotlib.patches as patches
 import numpy as np
 from scipy.optimize import brentq
@@ -125,10 +125,10 @@ ND[key] = 1-NO_spaak(c, denom)[0]
 FD[key] = np.log(lamb1/(1+c*A11/A22*(lamb2-1)))/np.log(lamb1)
 
 keys = ["Chesson (2003)","Carroll et al. (2011)", "Zhao et al. (2016)",
-        "Godoy & Levine (2014)", "Adler et al. (2007)", "Bimler et al. (2018)",
-        "Carmel et al. (2017)", "Saavedra et al. (2017)", "Spaak & De Laender"]
+        "Godoy & Levine (2014)", "Saavedra et al. (2017)","Adler et al. (2007)", 
+        "Carmel et al. (2017)","Bimler et al. (2018)",  "Spaak & De Laender"]
 
-colors =  {keys[i]: rainbow(np.linspace(0, 1, len(keys)))[i]
+colors =  {keys[i]: viridis(1-np.linspace(0, 1, len(keys)))[i]
                 for i in range(len(keys))}
 
 
@@ -183,9 +183,10 @@ if __name__ == "__main__":
     
     
     # axis labels
-    plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = 16)
+    plt.xlabel(r'Interspecific interaction ($\alpha$)', fontsize = 16)
     plt.ylabel(r'Niche difference $(\mathcal{N})$', fontsize = 16)
     
+    fig.savefig("ND_in_annual_plants.pdf")
     fig.savefig("ND_in_annual_plants.eps")
     
     ###########################################################################
@@ -212,7 +213,7 @@ if __name__ == "__main__":
     plt.axvline(x=0, color = "black", linestyle = ":")
     
     # axis labels
-    plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = 16)
+    plt.xlabel(r'Interspecific interaction ($\alpha$)', fontsize = 16)
     plt.ylabel(r'Fitness difference $(\mathcal{F})$', fontsize = 16)
     
     fig.savefig("FD_in_annual_plants.pdf")

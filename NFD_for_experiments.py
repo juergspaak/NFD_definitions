@@ -353,6 +353,7 @@ def dens_to_per_capita(dens, time, input_par, log, i):
             ", ``f0`` or ``N_star``") 
     dNdt = uni_sp(log["log"](dens_finite), per_cap_growth,
                   k = input_par["k"][i], s = s, w = w)
+    print(dNdt.get_coeffs(), "coeffs")
     
     def per_capita(N):
         # compute the percapita growth rate of the species        

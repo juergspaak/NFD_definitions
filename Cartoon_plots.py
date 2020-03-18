@@ -142,8 +142,8 @@ exp2, = ax_leg.plot(0, np.nan, ":",  color = "black", fillstyle = "none",
 spec1 = mpatches.Patch(color='black', label = 'Species 1')
 spec2 = mpatches.Patch(color='grey', label = 'Species 2')
 ax_leg.legend(handles = [exp1,exp2,spec1, spec2]
-              , loc = "center", bbox_to_anchor=(0.5,-0.12), ncol = 4,
+              , loc = "center", bbox_to_anchor=(0.5,-0.17), ncol = 4,
               fontsize = 12)
-
+fig.tight_layout()
 fig.savefig("Figure_cartoon.pdf")
 fig.savefig("Figure_cartoon.eps")

@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 k_spec = pd.read_csv("Lights_and_absorptions.csv")
-a = pd.read_csv("26.csv", skiprows = 1, skipfooter = 10)
 n_bars = 15
 dist = len(k_spec)//n_bars
 
@@ -25,9 +24,10 @@ plt.ylabel(r"absorption $[ml\cdot cells^{-1}\cdot m^{-1}]$")
 plt.yticks([0,0.3,0.6])
 
 ax_I_in = plt.gca().twinx()
-ax_I_in.bar(k_spec["lambda"][::dist]+2*dist, k_spec["I_in"][::dist],
-            width = dist,
+ax_I_in.plot(k_spec["lambda"], k_spec["I_in"],
            color = "red")
+plt.yticks([0,0.5,1])
+plt.ylim([0,None])
 plt.ylabel(r"Incoming light [mumol photons $m^{-2}s^{-1}$]")
 
 fig.savefig("AP_figure_incoming_light.pdf")

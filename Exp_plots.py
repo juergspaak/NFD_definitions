@@ -211,26 +211,45 @@ def arrow(xy_tail, xy_head, ax, increase_length = 0, shift_xy = 0,
     xy_tail = xy_tail + (xy_tail-xy_head)*increase_length
     ax.annotate(" ", xy_head + shift_xy, xy_tail + shift_xy,
                 arrowprops = arrowprops)
+    
+def arrow2(xy_tail, xy_head, ax, length = 1.5, shift_xy = 0,
+          arrowprops = None, center = False):
+    xy_tail = np.array(xy_tail)
+    xy_head = np.array(xy_head)
+    xy_tail[1] = np.log(xy_tail[1])
+    xy_head[1] = np.log(xy_head[1])
+    distance = xy_head-xy_tail
+    axis_scale = [ax.get_xlim()[1]-ax.get_xlim()[0],
+                  ax.get_ylim()[1]-ax.get_ylim()[0]]
+    xy_head = xy_tail + length*distance/np.sqrt(np.sum((distance/axis_scale)**2))
+    if center:
+        diff = xy_head-xy_tail
+        xy_head -= diff/2
+        xy_tail -= diff/2
+    ax.annotate(" ", xy_head + shift_xy, xy_tail + shift_xy,
+                arrowprops = arrowprops)
 
 # intrinsic growth rate
-arrow([time_p[0],growth[0,0]], [time_p[1],growth[0,1]], ax_arr0, 0.5, [3,0],
+arrow([time_p[0],growth[0,0]], [time_p[1],growth[0,1]], ax_arr0, 1.5, [3,0],
     arrowprops = dict(facecolor='white'))
+
+col = "None"
 ax_arr0.text(5, 15, r"$f_1(0,0)$",  fontsize = fs-1,
-            bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None")) 
-arrow([time_p[0],growth[1,0]], [time_p[1],growth[1,1]], ax_arr1, 0.4, [2,0],
+            bbox = dict(facecolor=col, alpha=0.5, edgecolor = "None")) 
+arrow([time_p[0],growth[1,0]], [time_p[1],growth[1,1]], ax_arr1, 1.1, [2,0],
     arrowprops = dict(facecolor='white'))
 ax_arr1.text(5, 14, r"$f_2(0,0)$",  fontsize = fs-1,
-            bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
+            bbox = dict(facecolor=col, alpha=0.5, edgecolor = "None"))
 
 # invasion growth
 arrow([time_p[inv_id-2],BS5_inv[inv_id]], [time_p[inv_id-1],BS5_inv[inv_id+1]],
       ax_arr0, 1, [2,-0.1], arrowprops = dict(facecolor='black'))
 ax_arr0.text(50, 14.9, r"$f_2(0,N_1^*)$",  fontsize = fs-2,
-            bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
+            bbox = dict(facecolor=col, alpha=0.5, edgecolor = "None"))
 arrow([time_p[inv_id-2],BS4_inv[inv_id]], [time_p[inv_id-1],BS4_inv[inv_id+1]],
       ax_arr1, 2, [2,-0.1], arrowprops = dict(facecolor='black'))
 ax_arr1.text(50, 15.1, r"$f_1(0,N_2^*)$",  fontsize = fs-2,
-            bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
+            bbox = dict(facecolor=col, alpha=0.5, edgecolor = "None"))
 
 # no_niche growth rate
 N_c = (pars["N_star"]*pars["c"])[[0,1],[1,0]]
@@ -240,14 +259,14 @@ arrow([t - time_growth[0],N_t["spec0_low"](t)],
     ax_arr0, 0.4, [0,0.2],
     arrowprops = dict(facecolor='white', ls = 'dashed'))
 ax_arr0.text(t-15,18, r"$f_1(c_2N_2^*,0)$",  fontsize = fs-2,
-            bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
+            bbox = dict(facecolor=col, alpha=0.5, edgecolor = "None"))
 t = 48
 arrow([t - time_growth[0],N_t["spec1_high"](t)],
     [t + 7 - time_growth[0],N_t["spec1_high"](t + 7)],
     ax_arr1, 0.4, [0,-0.2],
     arrowprops = dict(facecolor='white', ls = 'dashed'))
 ax_arr1.text(t-10,20.5, r"$f_2(c_1N_1^*,0)$",  fontsize = fs-2,
-            bbox = dict(facecolor='white', alpha=0.5, edgecolor = "None"))
+            bbox = dict(facecolor=col, alpha=0.5, edgecolor = "None"))
 
 ###############################################################################
 # add axes for resource use and for growth rates
@@ -312,6 +331,7 @@ ax_gro.set_yticklabels(names, fontsize = 12)
 ax_gro.set_title("D: growth rates", loc = "left")
 fig.tight_layout()
 fig.savefig("Experimental_data.pdf")
+fig.savefig("Experimental_data.eps")
 #"""
 plt.show()
 print(pars["ND"])

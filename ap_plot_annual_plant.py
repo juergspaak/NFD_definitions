@@ -49,4 +49,4 @@ plt.xticks([0,ap.sign*1])
 ax[0].set_ylim(*ND_range)
 
 ax[0].set_yticks([0,1])
-
+fig.savefig("ap_annual_plant.pdf")

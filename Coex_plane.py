@@ -5,10 +5,10 @@ Create the extended coexstence plot together with bar plots
 
 import matplotlib.pyplot as plt
 import numpy as np
-from string import ascii_lowercase as letters
+from string import ascii_uppercase as letters
 
 import matplotlib as mpl
-from matplotlib.textpath import TextPath
+
 from numerical_NFD import NFD_model
 
 mpl.rcParams['mathtext.fontset'] = 'cm'
@@ -60,11 +60,13 @@ colors = np.array([[0,0,0], #black
           [204,121,167]])/255 # reddish purple
 colors = colors[1:]
 labels = ["priority effects", "neutrality", "competitive\nexclusion",
-          "parasitism", "mutualism"]
+          "mix of competition\nand facilitation", "mutualism"]
 offset = (-4,-4)
 dist = np.arange(2)*(len(interaction_matrices)+1)
 lw = 0.5
 xticks = []
+s = [8,11,8,11,8]
+s = 5*[10]
 for i in range(2):
     # plot the extended coexistence range
     
@@ -85,9 +87,9 @@ for i in range(2):
     
     # ND and FD values
     for j in range(len(interaction_matrices)):
-        ax[0,i].plot(ND[j,i], -FD[j,i], marker = TextPath(offset, letters[j]),
-          color = colors[j], markersize = 12, label = labels[j],
-          linestyle = "")
+        ax[0,i].plot(ND[j,i], -FD[j,i], marker = r'$ {} $'.format(letters[j]),
+            color = colors[j], label = labels[j], linestyle = '',
+            markersize = s[j])
         
     ax[1,i].axhline(y = 1, color = "black", linestyle = "-", linewidth = lw)
     ax[1,i].axhline(y = 0, color = "black", linestyle = "-", linewidth = lw)

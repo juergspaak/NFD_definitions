@@ -1,6 +1,6 @@
 """
 @author: J.W.Spaak
-Create the plots used in the manuscript
+Create Fiugre 4
 """
 
 import matplotlib.pyplot as plt
@@ -16,20 +16,10 @@ import pandas as pd
 from NFD_for_experiments import NFD_experiment
 
 file = "Exp_NFD,densities{}.csv"
-BS4_dens = pd.read_csv(file.format("BS4"))
-BS5_dens = pd.read_csv(file.format("BS5"))
-
-BS4_dens = 1e3*BS4_dens.iloc[:,1:].values # convert to densities per ml
-BS5_dens = 1e3*BS5_dens.iloc[:,1:].values # remove name column
-
-# remove bad measurements
-BS4_dens[7, 9:15] = np.nan
-BS4_dens[8,15:] = np.nan
-
-BS4_dens[1, 17] = np.nan
-BS4_dens[5, 18] = np.nan
-BS5_dens[1, 17] = np.nan
-BS4_dens[2, 19] = np.nan
+BS4_dens = pd.read_csv(file.format("BS4"), index_col = 0)
+BS5_dens = pd.read_csv(file.format("BS5"), index_col = 0)
+BS4_dens = BS4_dens.values
+BS5_dens = BS5_dens.values
 
 # measurment taken all 3.5 days
 time = 3.5*np.arange(BS4_dens.shape[1]-1)
@@ -211,23 +201,6 @@ def arrow(xy_tail, xy_head, ax, increase_length = 0, shift_xy = 0,
     xy_tail = xy_tail + (xy_tail-xy_head)*increase_length
     ax.annotate(" ", xy_head + shift_xy, xy_tail + shift_xy,
                 arrowprops = arrowprops)
-    
-def arrow2(xy_tail, xy_head, ax, length = 1.5, shift_xy = 0,
-          arrowprops = None, center = False):
-    xy_tail = np.array(xy_tail)
-    xy_head = np.array(xy_head)
-    xy_tail[1] = np.log(xy_tail[1])
-    xy_head[1] = np.log(xy_head[1])
-    distance = xy_head-xy_tail
-    axis_scale = [ax.get_xlim()[1]-ax.get_xlim()[0],
-                  ax.get_ylim()[1]-ax.get_ylim()[0]]
-    xy_head = xy_tail + length*distance/np.sqrt(np.sum((distance/axis_scale)**2))
-    if center:
-        diff = xy_head-xy_tail
-        xy_head -= diff/2
-        xy_tail -= diff/2
-    ax.annotate(" ", xy_head + shift_xy, xy_tail + shift_xy,
-                arrowprops = arrowprops)
 
 # intrinsic growth rate
 arrow([time_p[0],growth[0,0]], [time_p[1],growth[0,1]], ax_arr0, 1.5, [3,0],
@@ -324,15 +297,9 @@ for line in lines:
     ax_gro.axhline(line, color = "k", linestyle = ":")
 
 ax_gro.set_xticks([0, 0.5, 1.0])
-#ax_gro.set_yticklabels(names, fontsize = 12)
 name_positions = np.linspace(*ax_gro.get_ylim(), 2*len(names)+1)
 ax_gro.set_yticks(name_positions[1::2])
 ax_gro.set_yticklabels(names, fontsize = 12)
 ax_gro.set_title("D: growth rates", loc = "left")
 fig.tight_layout()
-fig.savefig("Experimental_data.pdf")
-fig.savefig("Experimental_data.eps")
-#"""
-plt.show()
-print(pars["ND"])
-print(pars["FD"])
+fig.savefig("Figure4.pdf")

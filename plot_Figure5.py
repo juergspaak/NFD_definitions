@@ -1,6 +1,6 @@
 """
 @author: J.W.Spaak
-Create the plots used in the manuscript
+Create Fiugre 5
 """
 
 import matplotlib.pyplot as plt
@@ -145,5 +145,4 @@ ax_leg.legend(handles = [exp1,exp2,spec1, spec2]
               , loc = "center", bbox_to_anchor=(0.5,-0.17), ncol = 4,
               fontsize = 12)
 fig.tight_layout()
-fig.savefig("Figure_cartoon.pdf")
-fig.savefig("Figure_cartoon.eps")
+fig.savefig("Figure5.pdf")

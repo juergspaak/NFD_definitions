@@ -1,15 +1,19 @@
-"""level plots of the different definitions for fitness and niche
-differences for the annual plant model"""
+"""
+@author: J.W.Spaak
+Create Fiugre 1 and A1
+"""
 
 import matplotlib.pyplot as plt
 from matplotlib.cm import viridis
 import matplotlib.patches as patches
 import numpy as np
-from scipy.optimize import brentq
+
+from numerical_NFD import NFD_model
+
 plt.rcParams["font.family"] = 'Times New Roman'
 np.seterr(all = "ignore")
 
-rep = 5000
+rep = 500
 
 A11 = 1
 A22 = 1
@@ -102,27 +106,25 @@ s = r_i/mort +1
 test1 = np.amin([s[0]/s[1], s[1]/s[0]], axis = 0)
 
 # Definition accoding to Spaak
+lamb = np.array([lamb1, lamb2])
 
+def ap_model(N, A):
+    # annual plant model
+    return np.log(lamb/(1+A.dot(N)))
 
-c = np.empty(rep)
-denom = np.array([np.log(1+A12/A22*(lamb2-1)),
-                  np.log(1+A21/A11*(lamb1-1))])
-fac = np.array([A11/A22*(lamb2-1),A22/A11*(lamb1-1)])
-
-def NO_spaak(c,denom):
-    return np.array([denom[0]/np.log(1+c*fac[0]),denom[1]/np.log(1+fac[1]/c)])
-def NO_equate(c,denom):
-    NO = np.abs(NO_spaak(c,denom))
-    return NO[0]-NO[1]
-
+ND_spaak, FD_spaak = np.empty((2,rep))
+pars = {"N_star": np.ones((2,2))*(lamb-1)}
+A_all = np.ones((rep, 2,2))
+A_all[:,0,1] = A12
+A_all[:,1,0] = A21
 for l in range(rep):
-    try:
-        c[l] = brentq(NO_equate,0,1e3, args = (denom[:,l]))
-    except ValueError:
-        c[l] = brentq(NO_equate,0,1e10, args = (denom[:,l]))
+    pars = NFD_model(ap_model, pars = pars, args = (A_all[l],))
+    ND_spaak[l] = pars["ND"][0]
+    FD_spaak[l] = pars["FD"][0]
+
 key = "Spaak & De Laender"   
-ND[key] = 1-NO_spaak(c, denom)[0]
-FD[key] = np.log(lamb1/(1+c*A11/A22*(lamb2-1)))/np.log(lamb1)
+ND[key] = ND_spaak
+FD[key] = FD_spaak
 
 keys = ["Chesson (2003)","Carroll et al. (2011)", "Zhao et al. (2016)",
         "Godoy & Levine (2014)", "Saavedra et al. (2017)","Adler et al. (2007)", 
@@ -186,8 +188,7 @@ if __name__ == "__main__":
     plt.xlabel(r'Interspecific interaction ($\alpha$)', fontsize = 16)
     plt.ylabel(r'Niche difference $(\mathcal{N})$', fontsize = 16)
     
-    fig.savefig("ND_in_annual_plants.pdf")
-    fig.savefig("ND_in_annual_plants.eps")
+    fig.savefig("Figure1.pdf")
     
     ###########################################################################
     # plotting the results for ND
@@ -216,4 +217,4 @@ if __name__ == "__main__":
     plt.xlabel(r'Interspecific interaction ($\alpha$)', fontsize = 16)
     plt.ylabel(r'Fitness difference $(\mathcal{F})$', fontsize = 16)
     
-    fig.savefig("FD_in_annual_plants.pdf")
+    fig.savefig("FigureA1.pdf")

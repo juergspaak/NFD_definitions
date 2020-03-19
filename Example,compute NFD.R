@@ -77,7 +77,7 @@ for (i in 1:n_spec){
     FD_check_m[i] = 1-denominator/mu[i]
   }
 }
-
+ND_check_m = 1-NO_check_m
 ###############################################################################
 # passing additional arguments
 

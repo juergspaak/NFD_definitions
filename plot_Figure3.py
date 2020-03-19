@@ -1,6 +1,6 @@
 """
 @author: J.W.Spaak
-Create the extended coexstence plot together with bar plots
+Create Fiugre 3
 """
 
 import matplotlib.pyplot as plt
@@ -122,7 +122,7 @@ ax[1,1].bar(dist + j, 2*[-val],
 try:
     pars_exp
 except NameError:
-    from Exp_plots import pars as pars_exp
+    from plot_Figure4 import pars as pars_exp
 ax[0,0].plot(pars_exp["ND"][0], -pars_exp["FD"][0], 'k^',
   label = "Cyanobacteria\nexperiment")
 ax[0,1].plot(pars_exp["ND"][1], -pars_exp["FD"][1], 'k^')
@@ -164,5 +164,4 @@ ax[1,0].set_title("C: Species i", loc = "left")
 ax[1,1].set_title("D: Species j", loc = "left")
 fig.tight_layout()
 
-fig.savefig("Extended_Coexistence_region.pdf")
-fig.savefig("Extended_Coexistence_region.eps")
+fig.savefig("Figure3.pdf")

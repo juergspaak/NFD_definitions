@@ -1,13 +1,12 @@
 """
 @author: J.W.Spaak
-Create the extended coexstence plot together with bar plots
+Create Fiugre A2
 """
 
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib import patches
 
-import plot_annual_plant_definitions as ap
+import plot_Figure1 as ap
 
 
 
@@ -49,4 +48,4 @@ plt.xticks([0,ap.sign*1])
 ax[0].set_ylim(*ND_range)
 
 ax[0].set_yticks([0,1])
-fig.savefig("ap_annual_plant.pdf")
+fig.savefig("FigureA2.pdf")

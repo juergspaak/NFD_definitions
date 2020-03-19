@@ -1,6 +1,6 @@
 """
 @author: J.W.Spaak
-Create the plots used in the manuscript
+Create Fiugre 2
 """
 
 import matplotlib.pyplot as plt
@@ -77,5 +77,4 @@ ax[2].bar(x,np.amin(sp[1:], axis = 0), color = (0.25, 0.25, 0.25)
 
 ax[2].set_xlabel("Resource $R_l$\n(Limiting factor)", fontsize = fs)
 ax[2].set_xticks([])
-fig.savefig("Figure_Limiting_factors.pdf")
-fig.savefig("Figure_Limiting_factors.eps")
+fig.savefig("Figure2.pdf")

@@ -97,15 +97,14 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
             
         pars = {}
         pars = NFD_model(f, pars = pars)
+        print(pars)
         
-        pars will then contain additional information
-    
-    For simplified debugging:
-    
+        pars will then contain additional information  
         
     Literature:
-    The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
-    DOI: 10.1101/482703
+    "Intuitive and broadly applicable definitions of 
+    niche and fitness differences", J.W.Spaak, F. deLaender
+    DOI: https://doi.org/10.1101/482703 
     """
     if n_spec == 1:
         # species case, single species are assumed to have ND = 1
@@ -278,7 +277,7 @@ def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
     # monoculture growth rate
     pars["f0"] = pars["f"](np.zeros(n_spec))
     
-    if estimate_N_star_mono and np.all(monotone_f):
+    if estimate_N_star_mono:
         if np.ndim(pars["N_star"])==2:
             N_star_mono = np.mean(pars["N_star"], axis = 0)
         else:
@@ -288,30 +287,37 @@ def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
         N_star_mono[N_star_mono<0] = 1
         N_star_mono[~np.isfinite(N_star_mono)] = 1
         
-        # estimate N_star_via 
+        # estimate N_star via brentq algorithm
         for i in range(n_spec):
             if pars["f0"][i]<0:
                 continue # species can't survive in monoculture
-            counter = 0
-            # to avoid overflow, how often can we double?
-            max_counter = (np.log(np.finfo(float).max) - 
-                           np.log(N_star_mono[i]))/np.log(2)
-            growth = pars["f"](np.insert(np.zeros(n_spec-1), i,
-                             N_star_mono[i]))[i]
-            while (growth>0 and counter < max_counter-2):
-                N_star_mono[i] *= 2
+                
+            if monotone_f[i]:
+                
+                counter = 0
+                # to avoid overflow, how often can we double?
+                max_counter = (np.log(np.finfo(float).max) - 
+                               np.log(N_star_mono[i]))/np.log(2)
                 growth = pars["f"](np.insert(np.zeros(n_spec-1), i,
-                             N_star_mono[i]))[i]
-                counter += 1
-            if counter >= max_counter-2:
-                raise InputError(('Monoculture growth rate of species {i} does'
-                    ' not become negative with increasing N_{i}, '
-                    'i.e. ``f_{i}(N_{i})``>0 for any N').format(i=i))
-            N_star_mono[i] = brentq(lambda N: pars["f"](
-                    np.insert(np.zeros(n_spec-1), i,N))[i], 0, N_star_mono[i])
+                                 N_star_mono[i]))[i]
+                while (growth>0 and counter < max_counter-2):
+                    N_star_mono[i] *= 2
+                    growth = pars["f"](np.insert(np.zeros(n_spec-1), i,
+                                 N_star_mono[i]))[i]
+                    counter += 1
+                if counter >= max_counter-2:
+                    raise InputError(('Monoculture growth rate of species {i} '
+                        'does not become negative with increasing N_{i}, '
+                        'i.e. ``f_{i}(N_{i})``>0 for any N').format(i=i))
+                N_star_mono[i] = brentq(lambda N: pars["f"](
+                        np.insert(np.zeros(n_spec-1), i,N))[i],
+                    0, N_star_mono[i])
+            else:
+                N_star_mono[i] = fsolve(pars["f"](
+                        np.insert(np.zeros(n_spec-1), i,N))[i])
         # estimate that equilibrium density in each community is the 
         # monoculture equilibrium
-        pars["N_star"] = N_star_mono*np.ones((n_spec, n_spec))
+        pars["N_star"] = N_star_mono*np.ones((n_spec, n_spec))    
     
     # c must be a positive real number
     if (np.any(~np.isfinite(pars["c"])) or np.any(pars["c"]<=0) 
@@ -410,6 +416,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     # use a generic numerical solver when `f` is not montone
     # potentially there are multiple solutions
     if not monotone_f: 
+        print(pars["N_star"].shape)
         c = fsolve(inter_fun,pars["c"][sp[0],sp[1]],xtol = xtol)[0]
         if np.abs(inter_fun(c))>xtol:
             pars["c found by fsolve"] = c

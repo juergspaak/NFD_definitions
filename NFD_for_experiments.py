@@ -23,28 +23,28 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
     Compute the niche difference (ND), niche overlapp (NO), 
     fitnes difference(FD) and conversion factors (c). The 3 experiments to
     conduct are described in:
-    The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
-    DOI:
+    "Intuitive and broadly applicable definitions of 
+    niche and fitness differences", J.W.Spaak, F. deLaender
+    DOI: https://doi.org/10.1101/482703  
     
     Parameters
     -----------
     dens: ndarray (shape = (2, r, t))
         Densities of the species over time. dens[i,r,t] is the density of
-        species `i` in replica r at time time[t]. The different starting
+        species `i` in replica `r` at time `time[t]`. The different starting
         densities should both be combined into different replicas.
         `np.nan` are allowed, but will be removed or imputed (see `na.action`).
     time: array like
         Timepoints at which measurments were taken in increasing order.
-        If timepoints differ for different experiment `time` must contain all 
-        timepoints.
+        Timepoints of time and dens must be the same
     r_i: ndarray (shape = 2)
         Invasion growth rate of both species
     N_star: "spline", "average" or ndarray (shape = 2)
         Monoculture equilibrium density for both species. If "average" N_star
-        will be set to the average at the last time point. If "splin" N_star
+        will be set to the average at the last time point. If "spline" N_star
         will be computed using spline interpolation.
         Default is "average".
-    na_action: "remove" or "impute"(default = "remove")
+    na_action: "remove" or "impute" (default = "remove")
         If "remove" all datapoints with NA will be removed. This will cause the
         loss of the growth rate before and after the measured NA.
         Alternatively ("impute"), the missing value will be imputed using a
@@ -55,7 +55,7 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
         interpolation. "Linear" will assume constant growth between the first
         two data points. "perc=x" will set f0 to the x percentile of the
         measured per-capita growth rates of said species.
-        Alternatively ``f0`` can be passed directly.
+        Alternatively ``f0`` can be passed directly as an array.
     k : int or array of ints, optional, default = 3
         Degree of the smoothing spline.  Must be <= 5. If an array is passed
         the degree belongs to each species seperately in the following way
@@ -84,7 +84,8 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
         density.
     visualize: boolean, optional, default = True
         If true, plot a graph of the growth rates and the percapita growth
-        rates of both species. `fig`and `ax` of this figure are returned
+        rates of both species. `fig`and `ax` of this figure are returned.
+        Visualize is not possible from R via reticulate.
     growth_data: array of shape (2,2,n)
         Growth rates which are known. growth_data[i,0] is the density of species
         i and growth_data[i,1] is the per capita growth rate at said densities.
@@ -127,10 +128,11 @@ def NFD_experiment(dens, time, r_i, N_star = "average", na_action = "remove",
         only returned if ``visualize`` is True
     ax: Matplotlib axes
         only returned if ``visualize`` is True
-        
-    Literature:
-    The unified Niche and Fitness definition, J.W.Spaak, F. deLaender
-    DOI:
+    
+    Literature    
+    "Intuitive and broadly applicable definitions of 
+    niche and fitness differences", J.W.Spaak, F. deLaender
+    DOI: https://doi.org/10.1101/482703 
     """
     if from_R:
         dens = np.array([np.array(dens[0]), np.array(dens[1])])
@@ -353,7 +355,6 @@ def dens_to_per_capita(dens, time, input_par, log, i):
             ", ``f0`` or ``N_star``") 
     dNdt = uni_sp(log["log"](dens_finite), per_cap_growth,
                   k = input_par["k"][i], s = s, w = w)
-    print(dNdt.get_coeffs(), "coeffs")
     
     def per_capita(N):
         # compute the percapita growth rate of the species        

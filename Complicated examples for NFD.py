@@ -14,7 +14,7 @@ except ImportError:
     # in case this code is used in a submodule, import from the submodule
     from nfd_definitions.numerical_NFD import NFD_model
 
-# to run without error change this variable to True
+# to run without error messages change value to False
 no_error = True
 
 ###############################################################################

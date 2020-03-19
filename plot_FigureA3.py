@@ -1,4 +1,7 @@
-"plot the emission spectrum of the incoming light"
+"""
+@author: J.W.Spaak
+Create Fiugre A3
+"""
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -30,4 +33,4 @@ plt.yticks([0,0.5,1])
 plt.ylim([0,None])
 plt.ylabel(r"Incoming light [mumol photons $m^{-2}s^{-1}$]")
 
-fig.savefig("AP_figure_incoming_light.pdf")
+fig.savefig("FigureA3.pdf")

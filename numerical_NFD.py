@@ -198,7 +198,10 @@ def __input_check__(n_spec, f, args, monotone_f, pars):
         f = lambda N, *args: np.array(fold(N, *args))
         f0 = f(np.zeros(n_spec), *args)
         warn("`f` does not return a proper `np.ndarray`")
-
+        
+    if (not np.all(np.isfinite(f0))):
+        raise InputError("All species must have positive monoculture growth"
+                    +"i.e. `f(0)>0`. Especially this value must be defined")
     # broadcast monotone_f if necessary
     return np.logical_and(monotone_f, np.full(n_spec, True, bool))
         
@@ -400,10 +403,19 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     c : float, the conversion factor c_sp[0]^sp[1]
     """
     # check for special cases first
-    no_comp = np.isclose([NO_fun(pars,1, sp),
-                          NO_fun(pars,1, sp[::-1])], [0,0])
-    if no_comp.any():
-        return special_case(no_comp, sp)
+    if ((pars["N_star"][sp[0], sp[1]] == 0) or
+        (pars["N_star"][sp[1],sp[0]] == 0)):
+        return 0,0
+    
+    NO_values = [NO_fun(pars,1, sp), NO_fun(pars,1, sp[::-1])]
+    # do species interact?
+    if np.isclose(NO_values, [0,0]).any():
+        return special_case(np.isclose(NO_values, [0,0]), sp)
+    # has one species reached minimal growth rate?
+    if np.isinf(NO_values).any():
+        return special_case_mort(np.isinf(NO_values), sp)
+    
+    
     
     sp = np.asarray(sp)
     
@@ -457,6 +469,7 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     except ValueError:
         raise ValueError("f does not seem to be monotone. Please run with"
                          +"`monotone_f = False`")
+
     return c, 1/c # return c_i and c_j = 1/c_i
 
 def special_case(no_comp, sp):
@@ -472,13 +485,31 @@ def special_case(no_comp, sp):
     elif (no_comp == [False, True]).all():
         return np.inf, 0
     
+def special_case_mort(mort, sp):
+    # Return c for special case where one spec is not affected by itself
+    
+    warn("Species {} or {} reached mortality rate.".format(sp[0], sp[1]) +
+      " This may result in nonfinite c, ND and FD values.")
+    
+    if mort.all():
+        return 0, 0 # both species have reached mortality rate
+    elif (mort == [True, False]).all():
+        return np.inf, 0 # only first species affected
+    elif (mort == [False, True]).all():
+        return 0, np.inf
+    
 def NO_fun(pars,c, sp):
     # Compute NO for specis sp and conversion factor c
     f0 = pars["f"](switch_niche(pars["N_star"][sp[0]],sp))[sp[0]]
     fc = pars["f"](switch_niche(pars["N_star"][sp[0]],sp,c))[sp[0]]
+<<<<<<< HEAD
 
     if f0 == fc:
         return np.sign(f0-pars["r_i"])[sp[0]]*np.inf
+=======
+    if f0==fc: # e.g. because f0 and fc are minimal growth rates (= mortality)
+        return np.inf
+>>>>>>> no_interaction
     return (f0-pars["r_i"][sp[0]])/(f0-fc)
     
 def FD_fun(pars, c, sp):

@@ -502,14 +502,10 @@ def NO_fun(pars,c, sp):
     # Compute NO for specis sp and conversion factor c
     f0 = pars["f"](switch_niche(pars["N_star"][sp[0]],sp))[sp[0]]
     fc = pars["f"](switch_niche(pars["N_star"][sp[0]],sp,c))[sp[0]]
-<<<<<<< HEAD
 
     if f0 == fc:
         return np.sign(f0-pars["r_i"])[sp[0]]*np.inf
-=======
-    if f0==fc: # e.g. because f0 and fc are minimal growth rates (= mortality)
-        return np.inf
->>>>>>> no_interaction
+    
     return (f0-pars["r_i"][sp[0]])/(f0-fc)
     
 def FD_fun(pars, c, sp):

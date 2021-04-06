@@ -71,14 +71,24 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
         other. 
     ``ND`` : ndarray (shape = n_spec)
         Niche difference of the species to the other species
+        ND = (r_i - eta)/(\mu -eta)
     ``NO`` : ndarray (shape = n_spec)
         Niche overlapp of the species (NO = 1-ND)
     ``FD`` : ndarray (shape = n_spec)
-        Fitness difference
+        Fitness difference according to Spaak and De Laender 2020
+        FD = fc/f0
     ``f0``: ndarray (shape = n_spec)
         no-competition growth rate, f(0)
     ``fc``: ndarray (shape = n_spec)
         no-niche growth rate f(\sum c_j^i N_j^(-i),0)
+    ``eta``: ndarray (shape = n_spec)
+        no-niche growth rate f(\sum c_j^i N_j^(-i),0)
+        eta and fc are identical, but both are maintained for compatibility
+    ``mu``: ndarray (shape = n_spec)
+        intrinsic growth rate f(0,0)
+        mu and f0 are identical, but both are maintained for compatibility
+    ``F``: Fitness differences according to Spaak, Godoy and DeLaender
+        F = -eta/(mu - eta)
     
     Raises:
         InputError:
@@ -175,6 +185,11 @@ def NFD_model(f, n_spec = 2, args = (), monotone_f = True, pars = None,
     pars["c"] = c
     pars["f0"] = pars["f"](np.zeros(n_spec)) # monoculture growth rate
     pars["fc"] = FD*pars["f0"] # no niche growth rate
+    
+    # add new parameters according to Spaak, Godoy and De Laender 2021
+    pars["eta"] = pars["fc"]
+    pars["mu"] = pars["f0"]
+    pars["F"] = -pars["eta"]/(pars["mu"] - pars["eta"])
     return pars
   
 def __input_check__(n_spec, f, args, monotone_f, pars):

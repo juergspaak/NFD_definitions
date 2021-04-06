@@ -36,13 +36,15 @@ ax_all.set_yticks([])
 
 fs = 22
 ax_all.set_xlabel("Resource $R_l$\n(Limiting factor)", fontsize = fs)
+ax_all.set_xlabel("Resource $R_l$", fontsize = fs)
 ax_all.set_ylabel("Consumption $u_{il}$\n(Dependence on limiting factor)"
            , fontsize = fs)
+ax_all.set_ylabel("Consumption $u_il$", fontsize = fs)
 
 axs = ax.flatten()
 dist = [0,4,10]
 size = [1,1,1]
-NO = [r"$\mathcal{N} = 0$", r"$\mathcal{N} =\frac{2}{3}$",
+NO = [r"$\mathcal{N} = 0$", r"$0<\mathcal{N} <1$",
       r"$\mathcal{N} = 1$"]
 ax[0].set_xlim(-7,15)
 ax[0].set_ylim(0,0.6)

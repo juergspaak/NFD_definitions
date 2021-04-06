@@ -6,7 +6,7 @@ from matplotlib.cm import rainbow
 import matplotlib.patches as patches
 import numpy as np
 
-import plot_annual_plant_definitions as apd
+import plot_Figure1 as apd
 
 def save_ND(counter = [1]):
     print(counter[0])
@@ -17,13 +17,13 @@ def save_ND(counter = [1]):
 
 ###############################################################################
 # plotting the results for ND
-plt.style.use('dark_background')
+#plt.style.use('dark_background')
 fig = plt.figure(figsize = (8,8))
 
 fs_label = 20
 fs_axis = 18
 # axis labels
-plt.xlabel(r'Interspecific competition ($\alpha$)', fontsize = fs_label)
+plt.xlabel(r'Interspecific interaction ($\alpha$)', fontsize = fs_label)
 plt.ylabel(r'Niche difference $(\mathcal{N})$', fontsize = fs_label)
 ND_range = [-0.5,1.5]
 plt.axis([min(apd.interspec), max(apd.interspec)] + ND_range)
@@ -34,13 +34,13 @@ plt.yticks([])
 save_ND()
 
 # interspecific competition absent
-plt.plot(0,1, 'o', color = "white", markersize = 10)
+plt.plot(0,1, 'o', color = "k", markersize = 10)
 plt.xticks([0], fontsize = fs_axis)
 plt.yticks([1], fontsize = fs_axis)
 save_ND()
 
 # interspecific equal to intraspecific
-plt.plot(apd.sign*1,0, 'o', color = "white", markersize = 10)
+plt.plot(apd.sign*1,0, 'o', color = "k", markersize = 10)
 plt.xticks([apd.sign*1, 0], fontsize = fs_axis)
 plt.yticks([1, 0], fontsize = fs_axis)
 save_ND()
@@ -76,7 +76,7 @@ save_ND()
 keys = ["Chesson (2003)", "Zhao et al. (2016)", "Bimler et al. (2018)",
         "Adler et al. (2007)", "Carmel et al. (2017)",
         "Carroll et al. (2011)", "Saavedra et al. (2017)", 
-        "Godoy & Levine (2014)", "Spaak & DeLaender"]
+        "Godoy & Levine (2014)", "Spaak & De Laender"]
 colors =  {keys[i]: rainbow(np.linspace(0, 1, len(keys)))[i]
                 for i in range(len(keys))}
 

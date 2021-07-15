@@ -484,7 +484,13 @@ def solve_c(pars, sp = [0,1], monotone_f = True, xtol = 1e-10):
     except ValueError:
         raise ValueError("f does not seem to be monotone. Please run with"
                          +"`monotone_f = False`")
-
+    # test whether c actually is correct
+    # c = 0 implies issue with brentq
+    if (c==0) or inter_fun(c)>xtol:
+        pars["c"][sp[0],sp[1]] = c
+        raise InputError("Not able to find c_{}^{}.".format(*sp) +
+                "Please pass a better guess for c_i^j via the `pars` argument"+
+                ". Please also check for non-positive entries in pars[``c``]")
     return c, 1/c # return c_i and c_j = 1/c_i
 
 def special_case(no_comp, sp):

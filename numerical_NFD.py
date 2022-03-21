@@ -302,7 +302,7 @@ def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
             N_star_mono = pars["N_star"]
         
         # starting estimates for N_star must be positive real numbers
-        N_star_mono[N_star_mono<0] = 1
+        N_star_mono[N_star_mono<=0] = 1
         N_star_mono[~np.isfinite(N_star_mono)] = 1
         
         # estimate N_star via brentq algorithm
@@ -332,10 +332,12 @@ def preconditioner(f, args, n_spec, pars, xtol, monotone_f,
                     0, N_star_mono[i])
             else:
                 N_star_mono[i] = fsolve(pars["f"](
-                        np.insert(np.zeros(n_spec-1), i,N))[i])
+                        np.insert(np.zeros(n_spec-1), i,N_star_mono))[i])
         # estimate that equilibrium density in each community is the 
         # monoculture equilibrium
-        pars["N_star"] = N_star_mono*np.ones((n_spec, n_spec))    
+        pars["N_star"] = N_star_mono*np.ones((n_spec, n_spec))
+        # remove species from own resident community
+        pars["N_star"][np.arange(n_spec), np.arange(n_spec)] = 0
     
     # c must be a positive real number
     if (np.any(~np.isfinite(pars["c"])) or np.any(pars["c"]<=0) 

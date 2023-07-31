@@ -1,0 +1,19 @@
+Geijzendorffer;;;
+Column names;Species name;Unit;Description
+sp 0;Lolium perenne;-;Per capita effect of sp 0 on rows
+sp 1;Agrostis stolonifera;-;Per capita effect of sp 1 on rows
+sp 2;Phleum pratense;-;Per capita effect of sp 2 on rows
+sp 3;Plantago lanceolata;-;Per capita effect of sp 3 on rows
+sp 4; Trifolium pratense;-;Per capita effect of sp 4 on rows
+sp 5;Trifolium repens;-;Per capita effect of sp 5 on rows
+;;;
+;;;
+;;;
+Letten et al. 2018:;Description;Unit;
+Column names;;;
+Species;Name of species for parameters;-;
+sucrose;Sucrose concentration in nectar of experiment;Percentage;
+K;Half saturation constant for growth rate;milli molar of amino acid;
+mu;intrinsic growht rate;hour^-1;
+Q;resource quota;millimolar of amino acid/?L;
+R_star;Minimal resource concentration for posiitve growth;milli molar of amino acid;
